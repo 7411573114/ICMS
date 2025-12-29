@@ -1,0 +1,231 @@
+"use client";
+
+import React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { useUIStore } from "@/store";
+import {
+    LayoutDashboard,
+    Calendar,
+    Users,
+    UserCog,
+    Award,
+    Mic2,
+    Building2,
+    Settings,
+    LogOut,
+    ChevronLeft,
+    Brain,
+    Menu,
+    X,
+} from "lucide-react";
+
+const menuItems = [
+    {
+        title: "Dashboard",
+        href: "/dashboard",
+        icon: LayoutDashboard,
+    },
+    {
+        title: "Events",
+        href: "/dashboard/events",
+        icon: Calendar,
+    },
+    {
+        title: "Registrations",
+        href: "/dashboard/registrations",
+        icon: Users,
+    },
+    {
+        title: "Speakers",
+        href: "/dashboard/speakers",
+        icon: Mic2,
+    },
+    {
+        title: "Certificates",
+        href: "/dashboard/certificates",
+        icon: Award,
+    },
+    {
+        title: "Sponsors",
+        href: "/dashboard/sponsors",
+        icon: Building2,
+    },
+    {
+        title: "User Management",
+        href: "/dashboard/users",
+        icon: UserCog,
+    },
+    {
+        title: "Settings",
+        href: "/dashboard/settings",
+        icon: Settings,
+    },
+];
+
+export function Sidebar() {
+    const pathname = usePathname();
+    const { sidebarCollapsed, toggleSidebarCollapse, sidebarOpen, setSidebarOpen } = useUIStore();
+
+    return (
+        <>
+            {/* Mobile overlay */}
+            <div
+                className={cn(
+                    "fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300",
+                    sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+                )}
+                onClick={() => setSidebarOpen(false)}
+            />
+
+            {/* Sidebar */}
+            <aside
+                className={cn(
+                    "fixed top-0 left-0 z-50 h-full bg-primary flex flex-col transition-all duration-300 ease-in-out",
+                    // Desktop width based on collapse state
+                    sidebarCollapsed ? "lg:w-[72px]" : "lg:w-64",
+                    // Mobile: full width drawer
+                    "w-[280px]",
+                    // Transform for mobile
+                    sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+                    // Shadow for mobile
+                    sidebarOpen && "shadow-2xl lg:shadow-none"
+                )}
+            >
+                {/* Logo Header */}
+                <div className={cn(
+                    "flex items-center h-16 border-b border-white/10 px-4",
+                    sidebarCollapsed ? "lg:justify-center lg:px-0" : "justify-between"
+                )}>
+                    <Link href="/dashboard" className={cn(
+                        "flex items-center gap-3",
+                        sidebarCollapsed && "lg:justify-center"
+                    )}>
+                        <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center flex-shrink-0 border border-white/10">
+                            <Brain className="w-6 h-6 text-white" />
+                        </div>
+                        <div className={cn(
+                            "transition-all duration-200",
+                            sidebarCollapsed ? "lg:hidden" : "block"
+                        )}>
+                            <h1 className="text-white font-bold text-lg leading-tight">ICMS</h1>
+                            <p className="text-white/50 text-[10px] leading-tight">
+                                Conference Management
+                            </p>
+                        </div>
+                    </Link>
+
+                    {/* Mobile close button */}
+                    <button
+                        onClick={() => setSidebarOpen(false)}
+                        className="lg:hidden p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                {/* Navigation */}
+                <nav className="flex-1 py-4 px-3 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                    <ul className="space-y-1">
+                        {menuItems.map((item) => {
+                            const isActive = pathname === item.href ||
+                                (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
+                            return (
+                                <li key={item.href}>
+                                    <Link
+                                        href={item.href}
+                                        onClick={() => setSidebarOpen(false)}
+                                        className={cn(
+                                            "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative",
+                                            sidebarCollapsed && "lg:justify-center lg:px-0",
+                                            isActive
+                                                ? "bg-white/15 text-white shadow-lg"
+                                                : "text-white/60 hover:text-white hover:bg-white/10"
+                                        )}
+                                        title={sidebarCollapsed ? item.title : undefined}
+                                    >
+                                        {/* Active indicator */}
+                                        {isActive && (
+                                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white rounded-r-full" />
+                                        )}
+                                        <item.icon
+                                            className={cn(
+                                                "w-5 h-5 flex-shrink-0 transition-all",
+                                                isActive && "text-white"
+                                            )}
+                                        />
+                                        <span className={cn(
+                                            "font-medium text-sm whitespace-nowrap transition-all duration-200",
+                                            sidebarCollapsed ? "lg:hidden" : "block"
+                                        )}>
+                                            {item.title}
+                                        </span>
+                                    </Link>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </nav>
+
+                {/* Footer Actions */}
+                <div className="p-3 border-t border-white/10 space-y-1">
+                    {/* Collapse toggle - desktop only */}
+                    <button
+                        onClick={toggleSidebarCollapse}
+                        className={cn(
+                            "hidden lg:flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-white/60 hover:text-white hover:bg-white/10 transition-all",
+                            sidebarCollapsed && "justify-center px-0"
+                        )}
+                        title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                    >
+                        <ChevronLeft
+                            className={cn(
+                                "w-5 h-5 transition-transform duration-300",
+                                sidebarCollapsed && "rotate-180"
+                            )}
+                        />
+                        <span className={cn(
+                            "font-medium text-sm",
+                            sidebarCollapsed ? "hidden" : "block"
+                        )}>
+                            Collapse
+                        </span>
+                    </button>
+
+                    {/* Logout */}
+                    <Link
+                        href="/"
+                        className={cn(
+                            "flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/60 hover:text-red-300 hover:bg-red-500/10 transition-all",
+                            sidebarCollapsed && "lg:justify-center lg:px-0"
+                        )}
+                        title={sidebarCollapsed ? "Logout" : undefined}
+                    >
+                        <LogOut className="w-5 h-5 flex-shrink-0" />
+                        <span className={cn(
+                            "font-medium text-sm",
+                            sidebarCollapsed ? "lg:hidden" : "block"
+                        )}>
+                            Logout
+                        </span>
+                    </Link>
+                </div>
+            </aside>
+        </>
+    );
+}
+
+export function MobileMenuButton() {
+    const { setSidebarOpen } = useUIStore();
+
+    return (
+        <button
+            onClick={() => setSidebarOpen(true)}
+            className="lg:hidden p-2 -ml-2 rounded-xl hover:bg-muted transition-colors"
+            aria-label="Open menu"
+        >
+            <Menu className="w-6 h-6 text-foreground" />
+        </button>
+    );
+}

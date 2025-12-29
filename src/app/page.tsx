@@ -1,65 +1,1462 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+import React, { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import {
+    Calendar,
+    MapPin,
+    Users,
+    Award,
+    ArrowRight,
+    ArrowLeft,
+    Ticket,
+    GraduationCap,
+    Star,
+    Crown,
+    Medal,
+    Building2,
+    Phone,
+    Mail,
+    Smartphone,
+    Lock,
+    CheckCircle2,
+    Loader2,
+    Mic2,
+    Play,
+    Menu,
+    X,
+    Sparkles,
+    Globe,
+    Heart,
+    Zap,
+} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
+
+// Mock upcoming events data
+const upcomingEvents = [
+    {
+        id: 1,
+        title: "National Neurostimulation Summit 2026",
+        shortDescription: "Join 200+ leading neurologists and neurosurgeons for India's premier neurostimulation conference.",
+        date: "Jan 10-11, 2026",
+        time: "09:00 AM - 05:00 PM",
+        location: "Grand Conference Hall, AIIMS, New Delhi",
+        type: "Conference",
+        category: "Neurology",
+        registrations: 156,
+        capacity: 200,
+        price: 6500,
+        earlyBirdPrice: 5000,
+        earlyBirdDeadline: "Dec 31, 2025",
+        cmeCredits: 16,
+        image: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&h=600&fit=crop",
+        featured: true,
+        status: "upcoming",
+    },
+    {
+        id: 2,
+        title: "Deep Brain Stimulation Workshop",
+        shortDescription: "Hands-on workshop on DBS programming, troubleshooting, and patient management.",
+        date: "Jan 5, 2026",
+        time: "09:00 AM - 05:00 PM",
+        location: "CMC Vellore",
+        type: "Workshop",
+        category: "Surgery",
+        registrations: 27,
+        capacity: 30,
+        price: 4500,
+        earlyBirdPrice: 3800,
+        earlyBirdDeadline: "Dec 30, 2025",
+        cmeCredits: 8,
+        image: "https://images.unsplash.com/photo-1551076805-e1869033e561?w=800&h=600&fit=crop",
+        featured: false,
+        status: "upcoming",
+    },
+    {
+        id: 3,
+        title: "Epilepsy Management CME Session",
+        shortDescription: "Latest advances in epilepsy diagnosis, medical management, and surgical interventions.",
+        date: "Dec 29, 2025",
+        time: "02:00 PM - 06:00 PM",
+        location: "NIMHANS, Bangalore",
+        type: "CME",
+        category: "Neurology",
+        registrations: 72,
+        capacity: 80,
+        price: 1500,
+        earlyBirdPrice: null,
+        earlyBirdDeadline: null,
+        cmeCredits: 4,
+        image: "https://images.unsplash.com/photo-1559757175-0eb30cd8c063?w=800&h=600&fit=crop",
+        featured: false,
+        status: "upcoming",
+    },
+    {
+        id: 4,
+        title: "Neural Engineering Research Symposium",
+        shortDescription: "Cutting-edge research in brain-computer interfaces and neuroprosthetics.",
+        date: "Jan 18, 2026",
+        time: "09:00 AM - 06:00 PM",
+        location: "Virtual Event (Zoom)",
+        type: "Symposium",
+        category: "Research",
+        registrations: 89,
+        capacity: 200,
+        price: 2000,
+        earlyBirdPrice: 1500,
+        earlyBirdDeadline: "Jan 10, 2026",
+        cmeCredits: 8,
+        image: "https://images.unsplash.com/photo-1631815588090-d4bfec5b1ccb?w=800&h=600&fit=crop",
+        featured: false,
+        status: "upcoming",
+    },
+    {
+        id: 5,
+        title: "Pediatric Neurology Masterclass",
+        shortDescription: "Focused workshop on pediatric epilepsy surgery and vagus nerve stimulation.",
+        date: "Jan 25, 2026",
+        time: "09:00 AM - 04:00 PM",
+        location: "Apollo Hospital, Chennai",
+        type: "Masterclass",
+        category: "Pediatrics",
+        registrations: 18,
+        capacity: 25,
+        price: 5500,
+        earlyBirdPrice: 4800,
+        earlyBirdDeadline: "Jan 15, 2026",
+        cmeCredits: 6,
+        image: "https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=800&h=600&fit=crop",
+        featured: false,
+        status: "upcoming",
+    },
+    {
+        id: 6,
+        title: "Medical AI & Innovation Forum",
+        shortDescription: "Exploring AI applications in neurology, diagnostics, and patient care.",
+        date: "Feb 8, 2026",
+        time: "10:00 AM - 06:00 PM",
+        location: "Hyderabad International Convention Centre",
+        type: "Forum",
+        category: "Technology",
+        registrations: 95,
+        capacity: 250,
+        price: 3000,
+        earlyBirdPrice: 2500,
+        earlyBirdDeadline: "Jan 25, 2026",
+        cmeCredits: 6,
+        image: "https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?w=800&h=600&fit=crop",
+        featured: false,
+        status: "upcoming",
+    },
+];
+
+// Sponsors data with tiers
+const sponsors = [
+    { name: "Medtronic India", tier: "platinum", logo: "/sponsors/medtronic.svg" },
+    { name: "Boston Scientific", tier: "platinum", logo: "/sponsors/boston.svg" },
+    { name: "Abbott Neuromodulation", tier: "gold", logo: "/sponsors/abbott.svg" },
+    { name: "Stryker India", tier: "gold", logo: "/sponsors/stryker.svg" },
+    { name: "Sun Pharma", tier: "gold", logo: "/sponsors/sunpharma.svg" },
+    { name: "Cipla Neurosciences", tier: "silver", logo: "/sponsors/cipla.svg" },
+    { name: "LivaNova", tier: "silver", logo: "/sponsors/livanova.svg" },
+    { name: "Nevro Corp", tier: "silver", logo: "/sponsors/nevro.svg" },
+    { name: "St. Jude Medical", tier: "gold", logo: "/sponsors/stjude.svg" },
+    { name: "Bioness Inc", tier: "platinum", logo: "/sponsors/bioness.svg" },
+];
+
+const categories = ["All", "Neurology", "Surgery", "Research", "Pediatrics", "Technology"];
+
+// Custom hook for scroll reveal animations
+function useScrollReveal() {
+    useEffect(() => {
+        const elements = document.querySelectorAll("[data-scroll-reveal]");
+
+        // Immediately reveal elements already in viewport
+        elements.forEach((el) => {
+            const rect = el.getBoundingClientRect();
+            if (rect.top < window.innerHeight * 0.9) {
+                el.classList.add("revealed");
+            }
+        });
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add("revealed");
+                    }
+                });
+            },
+            {
+                threshold: 0.1,
+                rootMargin: "0px 0px -50px 0px",
+            }
+        );
+
+        elements.forEach((el) => observer.observe(el));
+
+        return () => observer.disconnect();
+    }, []);
+}
+
+// Floating Bubbles Component
+function FloatingBubbles() {
+    return (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {/* Large gradient blobs */}
+            <div className="absolute w-[600px] h-[600px] bg-teal-400/20 rounded-full blur-3xl -top-40 -left-40 animate-float-slow" />
+            <div className="absolute w-[500px] h-[500px] bg-blue-400/15 rounded-full blur-3xl top-1/3 -right-40 animate-float-gentle" style={{ animationDelay: "2s" }} />
+            <div className="absolute w-[400px] h-[400px] bg-cyan-400/15 rounded-full blur-3xl bottom-20 left-1/4 animate-float" style={{ animationDelay: "1s" }} />
+
+            {/* Floating circles */}
+            <div className="absolute w-4 h-4 bg-white/20 rounded-full top-[20%] left-[10%] animate-float" style={{ animationDelay: "0s" }} />
+            <div className="absolute w-6 h-6 bg-white/15 rounded-full top-[40%] left-[20%] animate-float-gentle" style={{ animationDelay: "1s" }} />
+            <div className="absolute w-3 h-3 bg-cyan-300/30 rounded-full top-[60%] left-[15%] animate-float-slow" style={{ animationDelay: "2s" }} />
+            <div className="absolute w-5 h-5 bg-white/10 rounded-full top-[30%] right-[15%] animate-float" style={{ animationDelay: "0.5s" }} />
+            <div className="absolute w-4 h-4 bg-teal-300/20 rounded-full top-[70%] right-[20%] animate-float-gentle" style={{ animationDelay: "1.5s" }} />
+            <div className="absolute w-8 h-8 bg-white/10 rounded-full top-[50%] right-[25%] animate-float-slow" style={{ animationDelay: "3s" }} />
+
+            {/* Decorative rings */}
+            <div className="absolute w-32 h-32 border border-white/10 rounded-full top-[25%] left-[5%] animate-pulse-smooth" />
+            <div className="absolute w-48 h-48 border border-white/5 rounded-full top-[60%] right-[8%] animate-pulse-smooth" style={{ animationDelay: "1.5s" }} />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+    );
+}
+
+// Decorative Background Component
+function DecorativeBackground() {
+    return (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {/* Gradient orbs */}
+            <div className="absolute w-[500px] h-[500px] rounded-full bg-gradient-to-br from-teal-100/40 to-transparent -top-60 -right-60 blur-3xl animate-float-slow" />
+            <div className="absolute w-[400px] h-[400px] rounded-full bg-gradient-to-br from-blue-100/30 to-transparent bottom-0 -left-40 blur-3xl animate-float-gentle" style={{ animationDelay: "2s" }} />
+
+            {/* Floating shapes */}
+            <div className="absolute w-20 h-20 border-2 border-primary/10 rounded-2xl top-[30%] right-[15%] rotate-12 animate-float" style={{ animationDelay: "1s" }} />
+            <div className="absolute w-16 h-16 border-2 border-teal-200/20 rounded-full top-[60%] left-[10%] animate-float-gentle" style={{ animationDelay: "0.5s" }} />
+            <div className="absolute w-12 h-12 bg-gradient-to-br from-primary/5 to-transparent rounded-lg top-[20%] left-[20%] rotate-45 animate-float-slow" style={{ animationDelay: "1.5s" }} />
         </div>
-      </main>
-    </div>
-  );
+    );
+}
+
+export default function PublicHomePage() {
+    const router = useRouter();
+    const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+    const [authTab, setAuthTab] = useState("login");
+    const [isLoading, setIsLoading] = useState(false);
+    const [otpSent, setOtpSent] = useState(false);
+    const [otpVerified, setOtpVerified] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [activeCategory, setActiveCategory] = useState("All");
+    const [hoveredEvent, setHoveredEvent] = useState<number | null>(null);
+
+    // Carousel state
+    const [currentSlide, setCurrentSlide] = useState(0);
+    const featuredEvents = upcomingEvents.filter(e => e.status === "upcoming").slice(0, 3);
+
+    // Form states
+    const [phone, setPhone] = useState("");
+    const [otp, setOtp] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [name, setName] = useState("");
+    const [activeSection, setActiveSection] = useState("Home");
+
+    // Initialize scroll reveal
+    useScrollReveal();
+
+    // Auto-advance carousel
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentSlide((prev) => (prev + 1) % featuredEvents.length);
+        }, 6000);
+        return () => clearInterval(timer);
+    }, [featuredEvents.length]);
+
+    // Scroll spy for active section
+    useEffect(() => {
+        const handleScroll = () => {
+            const sections = ["hero", "events", "about", "contact"];
+            const scrollPosition = window.scrollY + 150; // Offset for header
+
+            for (const sectionId of sections) {
+                const element = document.getElementById(sectionId);
+                if (element) {
+                    const { offsetTop, offsetHeight } = element;
+                    if (scrollPosition >= offsetTop && scrollPosition < offsetTop + offsetHeight) {
+                        const sectionName = sectionId === "hero" ? "Home" : sectionId.charAt(0).toUpperCase() + sectionId.slice(1);
+                        setActiveSection(sectionName);
+                        break;
+                    }
+                }
+            }
+        };
+
+        window.addEventListener("scroll", handleScroll);
+        handleScroll(); // Check initial position
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, []);
+
+    const nextSlide = useCallback(() => {
+        setCurrentSlide((prev) => (prev + 1) % featuredEvents.length);
+    }, [featuredEvents.length]);
+
+    const prevSlide = useCallback(() => {
+        setCurrentSlide((prev) => (prev - 1 + featuredEvents.length) % featuredEvents.length);
+    }, [featuredEvents.length]);
+
+    // Filter events
+    const filteredEvents = upcomingEvents.filter((event) => {
+        if (activeCategory === "All") return event.status === "upcoming";
+        return event.category === activeCategory && event.status === "upcoming";
+    });
+
+    const handleSendOtp = async () => {
+        if (!phone || phone.length < 10) return;
+        setIsLoading(true);
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        setOtpSent(true);
+        setIsLoading(false);
+    };
+
+    const handleVerifyOtp = async () => {
+        if (!otp || otp.length < 4) return;
+        setIsLoading(true);
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        setOtpVerified(true);
+        setIsLoading(false);
+        setTimeout(() => {
+            setIsAuthModalOpen(false);
+            router.push("/events");
+        }, 1000);
+    };
+
+    const handleEmailLogin = async () => {
+        if (!email || !password) return;
+        setIsLoading(true);
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        setIsLoading(false);
+        router.push("/dashboard");
+    };
+
+    const handleRegister = async () => {
+        if (!name || !phone) return;
+        setIsLoading(true);
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        setOtpSent(true);
+        setIsLoading(false);
+    };
+
+    const resetAuthState = () => {
+        setOtpSent(false);
+        setOtpVerified(false);
+        setPhone("");
+        setOtp("");
+        setEmail("");
+        setPassword("");
+        setName("");
+    };
+
+    const getSlotsInfo = (event: typeof upcomingEvents[0]) => {
+        const remaining = event.capacity - event.registrations;
+        if (remaining <= 0) return { text: "Sold Out", color: "text-red-500", urgent: true };
+        if (remaining <= 10) return { text: `Only ${remaining} left!`, color: "text-orange-500", urgent: true };
+        return { text: `${remaining} spots available`, color: "text-green-600", urgent: false };
+    };
+
+    return (
+        <div className="min-h-screen bg-background">
+            {/* Header */}
+            <header className="sticky top-0 z-50 border-b bg-white/90 backdrop-blur-xl supports-[backdrop-filter]:bg-white/70">
+                <div className="container mx-auto px-4 lg:px-8">
+                    <div className="flex h-16 lg:h-20 items-center justify-between">
+                        <Link href="/" className="flex items-center gap-3 group">
+                            <div className="h-10 w-10 lg:h-12 lg:w-12 rounded-2xl gradient-medical flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:scale-105 transition-all duration-300">
+                                <GraduationCap className="h-5 w-5 lg:h-6 lg:w-6 text-white" />
+                            </div>
+                            <div className="hidden sm:block">
+                                <h1 className="font-bold text-lg lg:text-xl leading-none tracking-tight">MedConf</h1>
+                                <p className="text-xs text-muted-foreground">Medical Conference Portal</p>
+                            </div>
+                        </Link>
+
+                        {/* Desktop Navigation */}
+                        <nav className="hidden md:flex items-center gap-1">
+                            {["Home", "Events", "About", "Contact"].map((item) => (
+                                <button
+                                    key={item}
+                                    type="button"
+                                    onClick={() => {
+                                        setActiveSection(item);
+                                        const sectionId = item === "Home" ? "hero" : item.toLowerCase();
+                                        const element = document.getElementById(sectionId);
+                                        if (element) {
+                                            element.scrollIntoView({ behavior: "smooth" });
+                                        }
+                                    }}
+                                    className={cn(
+                                        "px-4 py-2 rounded-full text-sm font-medium transition-all duration-300",
+                                        activeSection === item
+                                            ? "text-primary bg-primary/5"
+                                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                    )}
+                                >
+                                    {item}
+                                </button>
+                            ))}
+                        </nav>
+
+                        <div className="flex items-center gap-2 lg:gap-3">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="hidden sm:flex text-sm rounded-full"
+                                onClick={() => {
+                                    resetAuthState();
+                                    setAuthTab("login");
+                                    setIsAuthModalOpen(true);
+                                }}
+                            >
+                                Sign In
+                            </Button>
+                            <Button
+                                size="sm"
+                                className="gradient-medical text-white hover:opacity-90 shadow-md hover:shadow-lg transition-all duration-300 text-sm px-5 lg:px-6 rounded-full"
+                                onClick={() => {
+                                    resetAuthState();
+                                    setAuthTab("register");
+                                    setIsAuthModalOpen(true);
+                                }}
+                            >
+                                Register
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="md:hidden rounded-full"
+                                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                            >
+                                {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Mobile Menu */}
+                    {mobileMenuOpen && (
+                        <div className="md:hidden py-4 border-t animate-fadeIn">
+                            <nav className="flex flex-col gap-1">
+                                {["Home", "Events", "About", "Contact"].map((item) => (
+                                    <button
+                                        key={item}
+                                        type="button"
+                                        onClick={() => {
+                                            setMobileMenuOpen(false);
+                                            setActiveSection(item);
+                                            const sectionId = item === "Home" ? "hero" : item.toLowerCase();
+                                            const element = document.getElementById(sectionId);
+                                            if (element) {
+                                                element.scrollIntoView({ behavior: "smooth" });
+                                            }
+                                        }}
+                                        className={cn(
+                                            "px-4 py-3 text-sm font-medium rounded-xl transition-colors text-left",
+                                            activeSection === item
+                                                ? "text-primary bg-primary/5"
+                                                : "text-muted-foreground hover:bg-muted/50"
+                                        )}
+                                    >
+                                        {item}
+                                    </button>
+                                ))}
+                                <Button
+                                    variant="ghost"
+                                    className="justify-start mt-2 rounded-xl"
+                                    onClick={() => {
+                                        setMobileMenuOpen(false);
+                                        resetAuthState();
+                                        setAuthTab("login");
+                                        setIsAuthModalOpen(true);
+                                    }}
+                                >
+                                    Sign In
+                                </Button>
+                            </nav>
+                        </div>
+                    )}
+                </div>
+            </header>
+
+            {/* Hero Section - Modern Redesign */}
+            <section id="hero" className="relative min-h-[90vh] lg:min-h-screen flex items-center bg-gradient-to-br from-[#061c2e] via-[#0a3d5c] to-[#0d5c7a] overflow-hidden">
+                {/* Floating Bubbles Background */}
+                <FloatingBubbles />
+
+                <div className="container mx-auto px-4 lg:px-8 py-16 lg:py-24 relative z-10">
+                    <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+                        {/* Left Side - Text Content */}
+                        <div className="text-white space-y-8 text-center lg:text-left">
+                            <div
+                                data-scroll-reveal
+                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 shadow-lg"
+                            >
+                                <Sparkles className="h-4 w-4 text-cyan-300" />
+                                <span className="text-sm font-medium">CME Accredited Programs</span>
+                            </div>
+
+                            <h1
+                                data-scroll-reveal
+                                data-scroll-delay="1"
+                                className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold leading-[1.1] tracking-tight"
+                            >
+                                Advance Your
+                                <span className="block mt-2 text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-300 to-emerald-300">
+                                    Medical Career
+                                </span>
+                            </h1>
+
+                            <p
+                                data-scroll-reveal
+                                data-scroll-delay="2"
+                                className="text-lg lg:text-xl text-white/70 max-w-xl mx-auto lg:mx-0 leading-relaxed"
+                            >
+                                Register for upcoming medical conferences, workshops, and symposiums.
+                                Earn CME credits and connect with healthcare leaders worldwide.
+                            </p>
+
+                            <div
+                                data-scroll-reveal
+                                data-scroll-delay="3"
+                                className="flex flex-wrap gap-4 justify-center lg:justify-start"
+                            >
+                                <Link href="#events">
+                                    <Button
+                                        size="lg"
+                                        className="bg-white text-primary hover:bg-white/90 shadow-xl hover:shadow-2xl transition-all duration-300 gap-2 text-base px-8 rounded-full"
+                                    >
+                                        <Calendar className="h-5 w-5" />
+                                        Browse Events
+                                    </Button>
+                                </Link>
+                            </div>
+
+                            {/* Stats with Animation */}
+                            <div
+                                data-scroll-reveal
+                                data-scroll-delay="4"
+                                className="grid grid-cols-3 gap-6 lg:gap-10 pt-10 border-t border-white/10"
+                            >
+                                {[
+                                    { value: "50+", label: "Events/Year", icon: Calendar },
+                                    { value: "5000+", label: "Attendees", icon: Users },
+                                    { value: "200+", label: "Speakers", icon: Mic2 },
+                                ].map((stat, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="text-center lg:text-left group"
+                                    >
+                                        <div className="flex items-center justify-center lg:justify-start gap-2 mb-1">
+                                            <stat.icon className="h-5 w-5 text-cyan-300/70 group-hover:text-cyan-300 transition-colors" />
+                                            <p className="text-3xl lg:text-4xl font-bold counter-number">{stat.value}</p>
+                                        </div>
+                                        <p className="text-sm text-white/50">{stat.label}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Right Side - Featured Event Card (Rounded) */}
+                        <div
+                            data-scroll-reveal="right"
+                            data-scroll-delay="2"
+                            className="relative"
+                        >
+                            <div className="relative rounded-[2.5rem] overflow-hidden bg-white shadow-2xl">
+                                {featuredEvents.map((event, index) => (
+                                    <div
+                                        key={event.id}
+                                        className={cn(
+                                            "transition-all duration-700 ease-out",
+                                            index === currentSlide ? "opacity-100 translate-x-0" : "opacity-0 absolute inset-0 translate-x-8"
+                                        )}
+                                    >
+                                        {/* Event Image */}
+                                        <div className="relative h-56 lg:h-72 overflow-hidden rounded-t-[2.5rem]">
+                                            <div
+                                                className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
+                                                style={{ backgroundImage: `url(${event.image})` }}
+                                            />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+
+                                            {/* Badges */}
+                                            <div className="absolute top-5 left-5 flex gap-2 z-10">
+                                                <Badge className="bg-white/95 backdrop-blur-sm text-primary border-0 px-3 py-1 rounded-full shadow-lg">
+                                                    {event.type}
+                                                </Badge>
+                                                {event.featured && (
+                                                    <Badge className="bg-gradient-to-r from-amber-400 to-orange-500 text-white border-0 px-3 py-1 rounded-full shadow-lg">
+                                                        <Star className="h-3 w-3 mr-1 fill-current" />
+                                                        Featured
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                            <div className="absolute top-5 right-5 z-10">
+                                                <Badge className="bg-white/95 backdrop-blur-sm text-primary border-0 px-3 py-1 rounded-full shadow-lg">
+                                                    <Award className="h-3 w-3 mr-1" />
+                                                    {event.cmeCredits} CME
+                                                </Badge>
+                                            </div>
+                                        </div>
+
+                                        {/* Event Details */}
+                                        <div className="p-6 lg:p-8 space-y-4">
+                                            <div>
+                                                <h3 className="text-xl lg:text-2xl font-bold text-foreground line-clamp-2 mb-2">
+                                                    {event.title}
+                                                </h3>
+                                                <p className="text-sm text-muted-foreground line-clamp-2">
+                                                    {event.shortDescription}
+                                                </p>
+                                            </div>
+
+                                            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                                                <span className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded-full">
+                                                    <Calendar className="h-4 w-4 text-primary" />
+                                                    {event.date}
+                                                </span>
+                                                <span className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded-full">
+                                                    <MapPin className="h-4 w-4 text-primary" />
+                                                    {event.location.split(",")[0]}
+                                                </span>
+                                            </div>
+
+                                            <div className="flex items-center justify-between pt-5 border-t">
+                                                <div>
+                                                    {event.earlyBirdPrice && (
+                                                        <span className="text-sm text-muted-foreground line-through mr-2">
+                                                            ₹{event.price.toLocaleString()}
+                                                        </span>
+                                                    )}
+                                                    <span className="text-2xl lg:text-3xl font-bold text-primary">
+                                                        ₹{(event.earlyBirdPrice || event.price).toLocaleString()}
+                                                    </span>
+                                                    {event.earlyBirdPrice && (
+                                                        <p className="text-xs text-green-600 font-medium mt-1">Early bird pricing</p>
+                                                    )}
+                                                </div>
+                                                <Link href={`/events/${event.id}/register`}>
+                                                    <Button className="gradient-medical text-white gap-2 shadow-lg hover:shadow-xl transition-all duration-300 rounded-full px-6">
+                                                        <Ticket className="h-4 w-4" />
+                                                        Register Now
+                                                    </Button>
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Carousel Controls */}
+                            <button
+                                onClick={prevSlide}
+                                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-white shadow-2xl flex items-center justify-center hover:bg-gray-50 hover:scale-110 transition-all duration-300 z-10"
+                                aria-label="Previous slide"
+                            >
+                                <ArrowLeft className="h-5 w-5 text-gray-600" />
+                            </button>
+                            <button
+                                onClick={nextSlide}
+                                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-white shadow-2xl flex items-center justify-center hover:bg-gray-50 hover:scale-110 transition-all duration-300 z-10"
+                                aria-label="Next slide"
+                            >
+                                <ArrowRight className="h-5 w-5 text-gray-600" />
+                            </button>
+
+                            {/* Indicators */}
+                            <div className="flex justify-center gap-3 mt-8">
+                                {featuredEvents.map((_, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => setCurrentSlide(index)}
+                                        className={cn(
+                                            "h-2.5 rounded-full transition-all duration-500",
+                                            index === currentSlide
+                                                ? "w-10 bg-white"
+                                                : "w-2.5 bg-white/40 hover:bg-white/60"
+                                        )}
+                                        aria-label={`Go to slide ${index + 1}`}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Curved Bottom Wave */}
+                <svg className="hero-wave" viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+                    <path d="M0 120L60 110C120 100 240 80 360 70C480 60 600 60 720 65C840 70 960 80 1080 85C1200 90 1320 90 1380 90L1440 90V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z" fill="white" fillOpacity="0.08" />
+                    <path d="M0 120L60 115C120 110 240 100 360 95C480 90 600 90 720 92C840 95 960 100 1080 100C1200 100 1320 95 1380 92L1440 90V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z" fill="#f8fafc" />
+                </svg>
+            </section>
+
+            {/* Events Section - Premium Redesign */}
+            <section id="events" className="py-20 lg:py-32 bg-gradient-to-b from-slate-50 to-slate-100 relative overflow-hidden">
+                <DecorativeBackground />
+
+                <div className="container mx-auto px-4 lg:px-8 relative z-10">
+                    {/* Section Header */}
+                    <div className="text-center mb-16" data-scroll-reveal>
+                        <Badge variant="outline" className="mb-4 bg-primary/5 border-primary/20 px-5 py-1.5 rounded-full">
+                            <Calendar className="h-3.5 w-3.5 mr-2" />
+                            Upcoming Events
+                        </Badge>
+                        <h2 className="text-3xl lg:text-5xl font-bold tracking-tight mb-4">
+                            Explore Medical Events
+                        </h2>
+                        <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
+                            Find and register for conferences, workshops, and CME sessions tailored for healthcare professionals
+                        </p>
+                    </div>
+
+                    {/* Category Filter Pills */}
+                    <div
+                        data-scroll-reveal
+                        data-scroll-delay="1"
+                        className="flex flex-wrap justify-center gap-3 mb-14 relative z-20"
+                    >
+                        {categories.map((category) => (
+                            <button
+                                key={category}
+                                type="button"
+                                onClick={() => setActiveCategory(category)}
+                                className={cn(
+                                    "px-6 py-2.5 text-sm font-medium rounded-full transition-all duration-300 cursor-pointer border relative z-20",
+                                    activeCategory === category
+                                        ? "bg-primary text-white border-primary shadow-lg"
+                                        : "bg-white text-muted-foreground border-border hover:border-primary/50 hover:text-primary hover:-translate-y-0.5"
+                                )}
+                            >
+                                {category}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Events Grid - Premium Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {filteredEvents.map((event, index) => {
+                            const slots = getSlotsInfo(event);
+                            const isHovered = hoveredEvent === event.id;
+
+                            return (
+                                <div
+                                    key={event.id}
+                                    data-scroll-reveal="scale"
+                                    data-scroll-delay={String((index % 3) + 1)}
+                                    className="relative bg-white rounded-[2rem] overflow-hidden border border-border/30 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 group cursor-pointer h-[420px] flex flex-col"
+                                    onMouseEnter={() => setHoveredEvent(event.id)}
+                                    onMouseLeave={() => setHoveredEvent(null)}
+                                >
+                                    {/* Image Container */}
+                                    <div className="relative overflow-hidden h-48 flex-shrink-0">
+                                        <div
+                                            className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
+                                            style={{ backgroundImage: `url(${event.image})` }}
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+
+                                        {/* Floating Badges */}
+                                        <div className="absolute top-4 left-4 flex flex-wrap gap-2 z-10">
+                                            <Badge className="bg-white/95 backdrop-blur-sm text-primary border-0 shadow-md rounded-full px-3">
+                                                {event.type}
+                                            </Badge>
+                                            {event.cmeCredits > 0 && (
+                                                <Badge className="bg-primary/95 text-white border-0 shadow-md backdrop-blur-sm rounded-full px-3">
+                                                    <Award className="h-3 w-3 mr-1" />
+                                                    {event.cmeCredits} CME
+                                                </Badge>
+                                            )}
+                                        </div>
+
+                                        {/* Urgency Badge */}
+                                        {slots.urgent && (
+                                            <div className="absolute top-4 right-4 z-10">
+                                                <Badge className="bg-gradient-to-r from-orange-500 to-red-500 text-white border-0 shadow-md backdrop-blur-sm animate-pulse rounded-full px-3">
+                                                    {slots.text}
+                                                </Badge>
+                                            </div>
+                                        )}
+
+                                        {/* Bottom Info Overlay */}
+                                        <div className="absolute bottom-0 left-0 right-0 p-5 z-10">
+                                            <div className="flex items-center gap-3 text-white/90 text-sm mb-2">
+                                                <span className="flex items-center gap-1.5">
+                                                    <Calendar className="h-3.5 w-3.5" />
+                                                    {event.date}
+                                                </span>
+                                                <span className="w-1 h-1 rounded-full bg-white/50" />
+                                                <span className="flex items-center gap-1.5">
+                                                    <MapPin className="h-3.5 w-3.5" />
+                                                    {event.location.split(",")[0]}
+                                                </span>
+                                            </div>
+                                            <h3 className="font-bold text-white leading-tight text-lg line-clamp-2">
+                                                {event.title}
+                                            </h3>
+                                        </div>
+                                    </div>
+
+                                    {/* Card Content */}
+                                    <div className="p-5 lg:p-6 flex-1 flex flex-col justify-between">
+                                        <p className="text-sm text-muted-foreground line-clamp-2">
+                                            {event.shortDescription}
+                                        </p>
+
+                                        {/* Price and CTA */}
+                                        <div className="flex items-center justify-between pt-4 border-t border-border/50 mt-auto">
+                                            <div>
+                                                {event.earlyBirdPrice && (
+                                                    <span className="text-sm text-muted-foreground line-through mr-2">
+                                                        ₹{event.price.toLocaleString()}
+                                                    </span>
+                                                )}
+                                                <span className="text-xl font-bold text-primary">
+                                                    ₹{(event.earlyBirdPrice || event.price).toLocaleString()}
+                                                </span>
+                                                {event.earlyBirdDeadline && (
+                                                    <p className="text-xs text-green-600 font-medium mt-0.5">
+                                                        Early bird available
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <Link href={`/events/${event.id}`}>
+                                                <Button
+                                                    size="sm"
+                                                    className={cn(
+                                                        "gap-2 transition-all duration-300 rounded-full px-5",
+                                                        isHovered
+                                                            ? "gradient-medical text-white shadow-lg"
+                                                            : "bg-primary/10 text-primary hover:bg-primary hover:text-white"
+                                                    )}
+                                                >
+                                                    View Details
+                                                    <ArrowRight className={cn(
+                                                        "h-4 w-4 transition-transform duration-300",
+                                                        isHovered && "translate-x-1"
+                                                    )} />
+                                                </Button>
+                                            </Link>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* View All CTA */}
+                    <div
+                        data-scroll-reveal
+                        className="text-center mt-16"
+                    >
+                        <Link href="/events">
+                            <Button variant="outline" size="lg" className="gap-2 px-8 rounded-full border-2 hover:bg-primary hover:text-white hover:border-primary transition-all duration-300">
+                                View All Events
+                                <ArrowRight className="h-4 w-4" />
+                            </Button>
+                        </Link>
+                    </div>
+                </div>
+
+                {/* Bottom Curve */}
+                <svg className="absolute bottom-0 left-0 right-0 w-full" viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+                    <path d="M0 80L48 74.7C96 69 192 59 288 53.3C384 48 480 48 576 53.3C672 59 768 69 864 69.3C960 69 1056 59 1152 53.3C1248 48 1344 48 1392 48L1440 48V80H1392C1344 80 1248 80 1152 80C1056 80 960 80 864 80C768 80 672 80 576 80C480 80 384 80 288 80C192 80 96 80 48 80H0Z" fill="white"/>
+                </svg>
+            </section>
+
+            {/* Sponsors Section - Marquee Redesign */}
+            <section className="py-20 lg:py-28 bg-white relative overflow-hidden">
+                {/* Background decoration */}
+                <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute w-[600px] h-[600px] rounded-full bg-gradient-to-br from-primary/5 to-transparent -top-80 -left-80" />
+                    <div className="absolute w-[400px] h-[400px] rounded-full bg-gradient-to-br from-teal-100/50 to-transparent -bottom-40 -right-40" />
+                </div>
+
+                <div className="container mx-auto px-4 lg:px-8 relative z-10">
+                    <div
+                        data-scroll-reveal
+                        className="text-center mb-16"
+                    >
+                        <Badge variant="outline" className="mb-4 px-5 py-1.5 rounded-full">
+                            <Building2 className="h-3.5 w-3.5 mr-2" />
+                            Our Partners
+                        </Badge>
+                        <h2 className="text-3xl lg:text-5xl font-bold tracking-tight mb-4">
+                            Trusted by Industry Leaders
+                        </h2>
+                        <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
+                            We collaborate with leading healthcare organizations to bring you the best medical education
+                        </p>
+                    </div>
+
+                    {/* Marquee Container */}
+                    <div
+                        data-scroll-reveal
+                        data-scroll-delay="1"
+                        className="overflow-hidden py-4"
+                    >
+                        {/* First Row - Moving Right */}
+                        <div className="flex gap-6 animate-marquee mb-6">
+                            {[...sponsors, ...sponsors].map((sponsor, idx) => (
+                                <div
+                                    key={idx}
+                                    className={cn(
+                                        "flex-shrink-0 flex items-center justify-center p-5 rounded-2xl min-w-[220px] hover:shadow-xl hover:-translate-y-2 transition-all duration-300 border-2",
+                                        sponsor.tier === "platinum" && "bg-gradient-to-br from-slate-50 to-slate-100 border-slate-300 hover:border-slate-400",
+                                        sponsor.tier === "gold" && "bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-300 hover:border-amber-400",
+                                        sponsor.tier === "silver" && "bg-gradient-to-br from-gray-50 to-slate-50 border-gray-300 hover:border-gray-400"
+                                    )}
+                                >
+                                    <div className="flex flex-col items-center gap-3">
+                                        <div className={cn(
+                                            "w-14 h-14 rounded-xl flex items-center justify-center text-xl font-bold shadow-md",
+                                            sponsor.tier === "platinum" && "bg-gradient-to-br from-slate-600 to-slate-800 text-white",
+                                            sponsor.tier === "gold" && "bg-gradient-to-br from-amber-500 to-yellow-500 text-white",
+                                            sponsor.tier === "silver" && "bg-gradient-to-br from-gray-400 to-gray-500 text-white"
+                                        )}>
+                                            {sponsor.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
+                                        </div>
+                                        <span className="text-sm font-semibold text-foreground text-center">
+                                            {sponsor.name}
+                                        </span>
+                                        <Badge
+                                            className={cn(
+                                                "text-xs capitalize rounded-full px-3 py-1 font-medium",
+                                                sponsor.tier === "platinum" && "bg-slate-700 text-white border-0",
+                                                sponsor.tier === "gold" && "bg-gradient-to-r from-amber-500 to-yellow-500 text-white border-0",
+                                                sponsor.tier === "silver" && "bg-gray-500 text-white border-0"
+                                            )}
+                                        >
+                                            {sponsor.tier === "platinum" && <Crown className="h-3 w-3 mr-1" />}
+                                            {sponsor.tier === "gold" && <Star className="h-3 w-3 mr-1" />}
+                                            {sponsor.tier === "silver" && <Medal className="h-3 w-3 mr-1" />}
+                                            {sponsor.tier}
+                                        </Badge>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Second Row - Moving Left */}
+                        <div className="flex gap-6 animate-marquee-reverse">
+                            {[...sponsors.slice().reverse(), ...sponsors.slice().reverse()].map((sponsor, idx) => (
+                                <div
+                                    key={idx}
+                                    className={cn(
+                                        "flex-shrink-0 flex items-center justify-center p-5 rounded-2xl min-w-[220px] hover:shadow-xl hover:-translate-y-2 transition-all duration-300 border-2",
+                                        sponsor.tier === "platinum" && "bg-gradient-to-br from-slate-50 to-slate-100 border-slate-300 hover:border-slate-400",
+                                        sponsor.tier === "gold" && "bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-300 hover:border-amber-400",
+                                        sponsor.tier === "silver" && "bg-gradient-to-br from-gray-50 to-slate-50 border-gray-300 hover:border-gray-400"
+                                    )}
+                                >
+                                    <div className="flex flex-col items-center gap-3">
+                                        <div className={cn(
+                                            "w-14 h-14 rounded-xl flex items-center justify-center text-xl font-bold shadow-md",
+                                            sponsor.tier === "platinum" && "bg-gradient-to-br from-slate-600 to-slate-800 text-white",
+                                            sponsor.tier === "gold" && "bg-gradient-to-br from-amber-500 to-yellow-500 text-white",
+                                            sponsor.tier === "silver" && "bg-gradient-to-br from-gray-400 to-gray-500 text-white"
+                                        )}>
+                                            {sponsor.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
+                                        </div>
+                                        <span className="text-sm font-semibold text-foreground text-center">
+                                            {sponsor.name}
+                                        </span>
+                                        <Badge
+                                            className={cn(
+                                                "text-xs capitalize rounded-full px-3 py-1 font-medium",
+                                                sponsor.tier === "platinum" && "bg-slate-700 text-white border-0",
+                                                sponsor.tier === "gold" && "bg-gradient-to-r from-amber-500 to-yellow-500 text-white border-0",
+                                                sponsor.tier === "silver" && "bg-gray-500 text-white border-0"
+                                            )}
+                                        >
+                                            {sponsor.tier === "platinum" && <Crown className="h-3 w-3 mr-1" />}
+                                            {sponsor.tier === "gold" && <Star className="h-3 w-3 mr-1" />}
+                                            {sponsor.tier === "silver" && <Medal className="h-3 w-3 mr-1" />}
+                                            {sponsor.tier}
+                                        </Badge>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Become a Sponsor CTA */}
+                    <div
+                        data-scroll-reveal
+                        className="text-center mt-12"
+                    >
+                        <p className="text-muted-foreground mb-4">Interested in sponsoring our events?</p>
+                        <Button variant="outline" className="gap-2 rounded-full px-6">
+                            <Heart className="h-4 w-4" />
+                            Become a Sponsor
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Bottom Curve */}
+                <svg className="absolute bottom-0 left-0 right-0 w-full" viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+                    <path d="M0 80L60 69.3C120 59 240 37 360 32C480 27 600 37 720 42.7C840 48 960 48 1080 42.7C1200 37 1320 27 1380 21.3L1440 16V80H1380C1320 80 1200 80 1080 80C960 80 840 80 720 80C600 80 480 80 360 80C240 80 120 80 60 80H0Z" fill="#f8fafc"/>
+                </svg>
+            </section>
+
+            {/* Features/About Section */}
+            <section id="about" className="py-20 lg:py-28 bg-slate-50 relative overflow-hidden">
+                <DecorativeBackground />
+
+                <div className="container mx-auto px-4 lg:px-8 relative z-10">
+                    <div
+                        data-scroll-reveal
+                        className="text-center mb-16"
+                    >
+                        <Badge variant="outline" className="mb-4 px-5 py-1.5 rounded-full">
+                            About Us
+                        </Badge>
+                        <h2 className="text-3xl lg:text-5xl font-bold tracking-tight mb-4">
+                            Why Choose MedConf?
+                        </h2>
+                        <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
+                            A seamless platform for medical professionals to discover, register, and attend accredited conferences
+                        </p>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+                        {[
+                            {
+                                icon: Award,
+                                title: "CME Accredited",
+                                description: "All events accredited by recognized medical councils",
+                                color: "from-teal-500 to-cyan-500",
+                                bg: "bg-teal-50"
+                            },
+                            {
+                                icon: Zap,
+                                title: "Easy Registration",
+                                description: "Quick OTP-based registration with secure payment",
+                                color: "from-amber-500 to-orange-500",
+                                bg: "bg-amber-50"
+                            },
+                            {
+                                icon: GraduationCap,
+                                title: "Digital Certificates",
+                                description: "Download CME certificates instantly after completion",
+                                color: "from-emerald-500 to-green-500",
+                                bg: "bg-emerald-50"
+                            },
+                            {
+                                icon: Globe,
+                                title: "Virtual Access",
+                                description: "Join events from anywhere with live streaming",
+                                color: "from-violet-500 to-purple-500",
+                                bg: "bg-violet-50"
+                            }
+                        ].map((feature, idx) => (
+                            <Card
+                                key={idx}
+                                data-scroll-reveal="scale"
+                                data-scroll-delay={String(idx + 1)}
+                                className="text-center card-hover border-0 shadow-lg bg-white group rounded-3xl overflow-hidden"
+                            >
+                                <CardContent className="pt-10 pb-8 px-6">
+                                    <div className={cn(
+                                        "w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5 transition-all duration-500 group-hover:scale-110 group-hover:shadow-lg",
+                                        feature.bg
+                                    )}>
+                                        <div className={cn(
+                                            "w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br text-white",
+                                            feature.color
+                                        )}>
+                                            <feature.icon className="h-6 w-6" />
+                                        </div>
+                                    </div>
+                                    <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
+                                    <p className="text-sm text-muted-foreground leading-relaxed">
+                                        {feature.description}
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Bottom Curve */}
+                <svg className="absolute bottom-0 left-0 right-0 w-full" viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+                    <path d="M0 80L80 74.7C160 69 320 59 480 58.7C640 59 800 69 960 69.3C1120 69 1280 59 1360 53.3L1440 48V80H1360C1280 80 1120 80 960 80C800 80 640 80 480 80C320 80 160 80 80 80H0Z" fill="white"/>
+                </svg>
+            </section>
+
+            {/* Contact Section */}
+            <section id="contact" className="py-20 lg:py-28 bg-white relative overflow-hidden">
+                <div className="container mx-auto px-4 lg:px-8">
+                    <div
+                        data-scroll-reveal
+                        className="max-w-5xl mx-auto relative"
+                    >
+                        {/* Base Card - Get in Touch */}
+                        <div className="bg-gradient-to-br from-[#061c2e] via-[#0a3d5c] to-[#0d5c7a] text-white rounded-[2.5rem] p-8 lg:p-12 lg:pr-[45%] relative overflow-hidden shadow-2xl">
+                            {/* Decorative Elements */}
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+                            <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+                            <div className="absolute top-1/2 left-1/3 w-32 h-32 border border-white/10 rounded-full -translate-x-1/2 -translate-y-1/2" />
+
+                            <div className="relative z-10">
+                                <h2 className="text-2xl lg:text-3xl font-bold mb-4">Get in Touch</h2>
+                                <p className="text-white/70 mb-8 text-lg">
+                                    Have questions about our events or need assistance with registration?
+                                </p>
+                                <div className="space-y-6">
+                                    {[
+                                        { icon: Mail, label: "Email", value: "conference@medconf.edu" },
+                                        { icon: Phone, label: "Phone", value: "+91 11 2659 3000" },
+                                        { icon: Building2, label: "Address", value: "Medical College Campus, New Delhi" }
+                                    ].map((contact, idx) => (
+                                        <div key={idx} className="flex items-center gap-4 group">
+                                            <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                                                <contact.icon className="h-5 w-5" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm text-white/50">{contact.label}</p>
+                                                <p className="font-medium">{contact.value}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Floating Card - Overlapping */}
+                        <div className="lg:absolute lg:right-8 lg:top-1/2 lg:-translate-y-1/2 mt-6 lg:mt-0 bg-white rounded-[2rem] shadow-[0_25px_80px_-15px_rgba(0,0,0,0.3)] p-8 lg:p-10 text-center w-full lg:w-[340px] hover:shadow-[0_35px_100px_-15px_rgba(0,0,0,0.35)] hover:-translate-y-[52%] transition-all duration-500 border border-border/10">
+                            <div className="w-20 h-20 rounded-2xl gradient-medical flex items-center justify-center mx-auto mb-5 shadow-xl">
+                                <GraduationCap className="h-10 w-10 text-white" />
+                            </div>
+                            <h3 className="font-bold text-2xl mb-2">MedConf</h3>
+                            <p className="text-muted-foreground mb-6 text-sm">
+                                Medical Conference Management System
+                            </p>
+                            <Button
+                                size="lg"
+                                className="gradient-medical text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-full px-8"
+                                onClick={() => {
+                                    resetAuthState();
+                                    setAuthTab("register");
+                                    setIsAuthModalOpen(true);
+                                }}
+                            >
+                                Register for Events
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Bottom Curve */}
+                <svg className="absolute bottom-0 left-0 right-0 w-full" viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+                    <path d="M0 80L48 69.3C96 59 192 37 288 32C384 27 480 37 576 48C672 59 768 69 864 69.3C960 69 1056 59 1152 48C1248 37 1344 27 1392 21.3L1440 16V80H1392C1344 80 1248 80 1152 80C1056 80 960 80 864 80C768 80 672 80 576 80C480 80 384 80 288 80C192 80 96 80 48 80H0Z" fill="#0f172a"/>
+                </svg>
+            </section>
+
+            {/* Footer */}
+            <footer className="py-16 bg-slate-900 text-white relative overflow-hidden">
+                {/* Background decoration */}
+                <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute w-[400px] h-[400px] rounded-full bg-gradient-to-br from-primary/10 to-transparent -top-60 -right-60" />
+                    <div className="absolute w-[300px] h-[300px] rounded-full bg-gradient-to-br from-teal-500/10 to-transparent -bottom-40 -left-40" />
+                </div>
+
+                <div className="container mx-auto px-4 lg:px-8 relative z-10">
+                    <div className="grid md:grid-cols-4 gap-8 mb-12">
+                        <div>
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="h-12 w-12 rounded-2xl gradient-medical flex items-center justify-center shadow-lg">
+                                    <GraduationCap className="h-6 w-6 text-white" />
+                                </div>
+                                <span className="font-bold text-xl">MedConf</span>
+                            </div>
+                            <p className="text-sm text-slate-400 leading-relaxed">
+                                The leading platform for medical conferences and CME events in India.
+                            </p>
+                        </div>
+
+                        <div>
+                            <h4 className="font-semibold mb-4">Quick Links</h4>
+                            <div className="flex flex-col gap-3 text-sm text-slate-400">
+                                <Link href="#events" className="hover:text-white transition-colors animated-underline inline-block">Events</Link>
+                                <Link href="#about" className="hover:text-white transition-colors animated-underline inline-block">About Us</Link>
+                                <Link href="#contact" className="hover:text-white transition-colors animated-underline inline-block">Contact</Link>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 className="font-semibold mb-4">Legal</h4>
+                            <div className="flex flex-col gap-3 text-sm text-slate-400">
+                                <Link href="#" className="hover:text-white transition-colors animated-underline inline-block">Privacy Policy</Link>
+                                <Link href="#" className="hover:text-white transition-colors animated-underline inline-block">Terms of Service</Link>
+                                <Link href="#" className="hover:text-white transition-colors animated-underline inline-block">Refund Policy</Link>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 className="font-semibold mb-4">Connect</h4>
+                            <div className="flex gap-3">
+                                {[
+                                    { name: "Twitter", initial: "T" },
+                                    { name: "LinkedIn", initial: "L" },
+                                    { name: "Facebook", initial: "F" }
+                                ].map((social) => (
+                                    <button
+                                        key={social.name}
+                                        className="w-11 h-11 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all duration-300 hover:scale-110"
+                                        aria-label={social.name}
+                                    >
+                                        <span className="text-sm font-medium">{social.initial}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="pt-8 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
+                        <p className="text-sm text-slate-400">
+                            © 2025 MedConf. All rights reserved.
+                        </p>
+                        <Link
+                            href="/auth/login"
+                            className="text-sm text-slate-400 hover:text-white transition-colors"
+                        >
+                            Admin Login
+                        </Link>
+                    </div>
+                </div>
+            </footer>
+
+            {/* Auth Modal */}
+            <Dialog open={isAuthModalOpen} onOpenChange={(open) => {
+                setIsAuthModalOpen(open);
+                if (!open) resetAuthState();
+            }}>
+                <DialogContent className="sm:max-w-md rounded-3xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl">
+                            {authTab === "login" ? "Welcome Back" : "Create Account"}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {authTab === "login"
+                                ? "Sign in to access your registrations and certificates"
+                                : "Register to book events and earn CME credits"}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <Tabs value={authTab} onValueChange={(v) => { setAuthTab(v); resetAuthState(); }}>
+                        <TabsList className="grid w-full grid-cols-2 rounded-full p-1">
+                            <TabsTrigger value="login" className="rounded-full">Login</TabsTrigger>
+                            <TabsTrigger value="register" className="rounded-full">Register</TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="login" className="space-y-4 mt-4">
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="phone">Mobile Number</Label>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            id="phone"
+                                            type="tel"
+                                            placeholder="Enter 10-digit mobile number"
+                                            value={phone}
+                                            onChange={(e) => setPhone(e.target.value)}
+                                            disabled={otpSent}
+                                            className="flex-1 rounded-xl"
+                                        />
+                                        {!otpSent && (
+                                            <Button
+                                                onClick={handleSendOtp}
+                                                disabled={phone.length < 10 || isLoading}
+                                                className="rounded-xl"
+                                            >
+                                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send OTP"}
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {otpSent && !otpVerified && (
+                                    <div className="space-y-2 animate-fadeIn">
+                                        <Label htmlFor="otp">Enter OTP</Label>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                id="otp"
+                                                type="text"
+                                                placeholder="Enter 6-digit OTP"
+                                                value={otp}
+                                                onChange={(e) => setOtp(e.target.value)}
+                                                maxLength={6}
+                                                className="flex-1 rounded-xl"
+                                            />
+                                            <Button onClick={handleVerifyOtp} disabled={otp.length < 4 || isLoading} className="rounded-xl">
+                                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify"}
+                                            </Button>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            OTP sent to +91 {phone}.
+                                            <button className="text-primary ml-1 hover:underline" onClick={() => setOtpSent(false)}>
+                                                Change number
+                                            </button>
+                                        </p>
+                                    </div>
+                                )}
+
+                                {otpVerified && (
+                                    <div className="p-4 rounded-2xl bg-green-50 text-green-700 text-center animate-fadeIn">
+                                        <CheckCircle2 className="h-8 w-8 mx-auto mb-2" />
+                                        <p className="font-medium">Login Successful!</p>
+                                        <p className="text-sm">Redirecting...</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="relative">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className="w-full border-t"></div>
+                                </div>
+                                <div className="relative flex justify-center text-xs uppercase">
+                                    <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div className="space-y-2">
+                                    <Label htmlFor="email">Email (Admin)</Label>
+                                    <Input
+                                        id="email"
+                                        type="email"
+                                        placeholder="admin@medconf.com"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        className="rounded-xl"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="password">Password</Label>
+                                    <Input
+                                        id="password"
+                                        type="password"
+                                        placeholder="Enter password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="rounded-xl"
+                                    />
+                                </div>
+                                <Button
+                                    className="w-full rounded-xl"
+                                    variant="outline"
+                                    onClick={handleEmailLogin}
+                                    disabled={!email || !password || isLoading}
+                                >
+                                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
+                                    Admin Login
+                                </Button>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="register" className="space-y-4 mt-4">
+                            {!otpSent ? (
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="reg-name">Full Name</Label>
+                                        <Input
+                                            id="reg-name"
+                                            type="text"
+                                            placeholder="Dr. John Smith"
+                                            value={name}
+                                            onChange={(e) => setName(e.target.value)}
+                                            className="rounded-xl"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="reg-phone">Mobile Number</Label>
+                                        <Input
+                                            id="reg-phone"
+                                            type="tel"
+                                            placeholder="Enter 10-digit mobile number"
+                                            value={phone}
+                                            onChange={(e) => setPhone(e.target.value)}
+                                            className="rounded-xl"
+                                        />
+                                    </div>
+                                    <Button
+                                        className="w-full gradient-medical text-white rounded-xl"
+                                        onClick={handleRegister}
+                                        disabled={!name || phone.length < 10 || isLoading}
+                                    >
+                                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Smartphone className="h-4 w-4 mr-2" />}
+                                        Send OTP & Register
+                                    </Button>
+                                </div>
+                            ) : !otpVerified ? (
+                                <div className="space-y-4 animate-fadeIn">
+                                    <div className="p-4 rounded-2xl bg-muted/50 text-center">
+                                        <Smartphone className="h-8 w-8 mx-auto mb-2 text-primary" />
+                                        <p className="font-medium">OTP Sent!</p>
+                                        <p className="text-sm text-muted-foreground">Enter the 6-digit code sent to +91 {phone}</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="reg-otp">Enter OTP</Label>
+                                        <Input
+                                            id="reg-otp"
+                                            type="text"
+                                            placeholder="Enter 6-digit OTP"
+                                            value={otp}
+                                            onChange={(e) => setOtp(e.target.value)}
+                                            maxLength={6}
+                                            className="text-center text-lg tracking-widest rounded-xl"
+                                        />
+                                    </div>
+                                    <Button
+                                        className="w-full gradient-medical text-white rounded-xl"
+                                        onClick={handleVerifyOtp}
+                                        disabled={otp.length < 4 || isLoading}
+                                    >
+                                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                                        Verify & Complete Registration
+                                    </Button>
+                                    <button
+                                        className="text-sm text-muted-foreground hover:text-foreground w-full text-center"
+                                        onClick={() => setOtpSent(false)}
+                                    >
+                                        ← Change details
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="p-6 rounded-2xl bg-green-50 text-green-700 text-center animate-fadeIn">
+                                    <CheckCircle2 className="h-12 w-12 mx-auto mb-3" />
+                                    <p className="font-bold text-lg">Registration Successful!</p>
+                                    <p className="text-sm mt-1">Welcome, {name}!</p>
+                                    <p className="text-sm mt-2">Redirecting to events...</p>
+                                </div>
+                            )}
+                        </TabsContent>
+                    </Tabs>
+                </DialogContent>
+            </Dialog>
+        </div>
+    );
 }
