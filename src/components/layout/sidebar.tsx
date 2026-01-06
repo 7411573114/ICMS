@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -67,6 +67,32 @@ const menuItems = [
 export function Sidebar() {
     const pathname = usePathname();
     const { sidebarCollapsed, toggleSidebarCollapse, sidebarOpen, setSidebarOpen } = useUIStore();
+    const [mounted, setMounted] = useState(false);
+
+    // Prevent hydration mismatch by only applying client state after mount
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    // Use default values during SSR, actual values after hydration
+    const isCollapsed = mounted ? sidebarCollapsed : false;
+    const isOpen = mounted ? sidebarOpen : false;
+
+    // Don't render dynamic parts until mounted to prevent hydration mismatch
+    if (!mounted) {
+        return (
+            <aside className="fixed top-0 left-0 z-50 h-full bg-primary flex flex-col transition-all duration-300 ease-in-out lg:w-64 w-[280px] -translate-x-full lg:translate-x-0">
+                <div className="flex items-center h-16 border-b border-white/10 px-4 justify-between">
+                    <Link href="/dashboard" className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl gradient-medical flex items-center justify-center">
+                            <Award className="w-5 h-5 text-white" />
+                        </div>
+                        <span className="text-lg font-bold text-white">ICMS</span>
+                    </Link>
+                </div>
+            </aside>
+        );
+    }
 
     return (
         <>
@@ -74,7 +100,7 @@ export function Sidebar() {
             <div
                 className={cn(
                     "fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300",
-                    sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+                    isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
                 )}
                 onClick={() => setSidebarOpen(false)}
             />
@@ -84,30 +110,30 @@ export function Sidebar() {
                 className={cn(
                     "fixed top-0 left-0 z-50 h-full bg-primary flex flex-col transition-all duration-300 ease-in-out",
                     // Desktop width based on collapse state
-                    sidebarCollapsed ? "lg:w-[72px]" : "lg:w-64",
+                    isCollapsed ? "lg:w-[72px]" : "lg:w-64",
                     // Mobile: full width drawer
                     "w-[280px]",
                     // Transform for mobile
-                    sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+                    isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
                     // Shadow for mobile
-                    sidebarOpen && "shadow-2xl lg:shadow-none"
+                    isOpen && "shadow-2xl lg:shadow-none"
                 )}
             >
                 {/* Logo Header */}
                 <div className={cn(
                     "flex items-center h-16 border-b border-white/10 px-4",
-                    sidebarCollapsed ? "lg:justify-center lg:px-0" : "justify-between"
+                    isCollapsed ? "lg:justify-center lg:px-0" : "justify-between"
                 )}>
                     <Link href="/dashboard" className={cn(
                         "flex items-center gap-3",
-                        sidebarCollapsed && "lg:justify-center"
+                        isCollapsed && "lg:justify-center"
                     )}>
                         <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center flex-shrink-0 border border-white/10">
                             <Brain className="w-6 h-6 text-white" />
                         </div>
                         <div className={cn(
                             "transition-all duration-200",
-                            sidebarCollapsed ? "lg:hidden" : "block"
+                            isCollapsed ? "lg:hidden" : "block"
                         )}>
                             <h1 className="text-white font-bold text-lg leading-tight">ICMS</h1>
                             <p className="text-white/50 text-[10px] leading-tight">
@@ -138,12 +164,12 @@ export function Sidebar() {
                                         onClick={() => setSidebarOpen(false)}
                                         className={cn(
                                             "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative",
-                                            sidebarCollapsed && "lg:justify-center lg:px-0",
+                                            isCollapsed && "lg:justify-center lg:px-0",
                                             isActive
                                                 ? "bg-white/15 text-white shadow-lg"
                                                 : "text-white/60 hover:text-white hover:bg-white/10"
                                         )}
-                                        title={sidebarCollapsed ? item.title : undefined}
+                                        title={isCollapsed ? item.title : undefined}
                                     >
                                         {/* Active indicator */}
                                         {isActive && (
@@ -157,7 +183,7 @@ export function Sidebar() {
                                         />
                                         <span className={cn(
                                             "font-medium text-sm whitespace-nowrap transition-all duration-200",
-                                            sidebarCollapsed ? "lg:hidden" : "block"
+                                            isCollapsed ? "lg:hidden" : "block"
                                         )}>
                                             {item.title}
                                         </span>
@@ -175,19 +201,19 @@ export function Sidebar() {
                         onClick={toggleSidebarCollapse}
                         className={cn(
                             "hidden lg:flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-white/60 hover:text-white hover:bg-white/10 transition-all",
-                            sidebarCollapsed && "justify-center px-0"
+                            isCollapsed && "justify-center px-0"
                         )}
-                        title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                        title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
                     >
                         <ChevronLeft
                             className={cn(
                                 "w-5 h-5 transition-transform duration-300",
-                                sidebarCollapsed && "rotate-180"
+                                isCollapsed && "rotate-180"
                             )}
                         />
                         <span className={cn(
                             "font-medium text-sm",
-                            sidebarCollapsed ? "hidden" : "block"
+                            isCollapsed ? "hidden" : "block"
                         )}>
                             Collapse
                         </span>
@@ -200,12 +226,12 @@ export function Sidebar() {
                             "flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/60 hover:text-red-300 hover:bg-red-500/10 transition-all",
                             sidebarCollapsed && "lg:justify-center lg:px-0"
                         )}
-                        title={sidebarCollapsed ? "Logout" : undefined}
+                        title={isCollapsed ? "Logout" : undefined}
                     >
                         <LogOut className="w-5 h-5 flex-shrink-0" />
                         <span className={cn(
                             "font-medium text-sm",
-                            sidebarCollapsed ? "lg:hidden" : "block"
+                            isCollapsed ? "lg:hidden" : "block"
                         )}>
                             Logout
                         </span>

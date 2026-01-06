@@ -1,25 +1,26 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     Plus,
     Search,
-    Filter,
     MoreHorizontal,
     Edit,
     Trash2,
     Eye,
+    RotateCcw,
     Mail,
     Phone,
     Building2,
     Calendar,
-    Clock,
     Upload,
     User,
     GraduationCap,
     Linkedin,
     Twitter,
     Globe,
+    Loader2,
+    X,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -48,100 +49,190 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { speakersService, Speaker } from "@/services/speakers";
+import { useConfirmDialog, useAlertDialog } from "@/components/ui/confirm-dialog";
 
-const speakers = [
-    {
-        id: 1,
-        name: "Dr. Rajesh Kumar",
-        photo: null,
-        designation: "Professor & Head",
-        department: "Neurology",
-        institution: "AIIMS, New Delhi",
-        email: "rajesh.kumar@aiims.edu",
-        phone: "+91 98765 43210",
-        topic: "Advances in Deep Brain Stimulation",
-        sessionDate: "2025-01-15",
-        sessionTime: "09:00 AM - 10:30 AM",
-        biography: "Dr. Rajesh Kumar is a renowned neurologist with over 25 years of experience in movement disorders and deep brain stimulation. He has published over 150 research papers and trained numerous specialists.",
-        status: "confirmed",
-        isPublished: true,
-        linkedin: "https://linkedin.com/in/drrajeshkumar",
-        twitter: "https://twitter.com/drrajeshk",
-    },
-    {
-        id: 2,
-        name: "Dr. Priya Sharma",
-        photo: null,
-        designation: "Associate Professor",
-        department: "Neurosurgery",
-        institution: "CMC Vellore",
-        email: "priya.sharma@cmcvellore.ac.in",
-        phone: "+91 87654 32109",
-        topic: "Minimally Invasive Neurosurgical Techniques",
-        sessionDate: "2025-01-15",
-        sessionTime: "11:00 AM - 12:30 PM",
-        biography: "Dr. Priya Sharma specializes in minimally invasive neurosurgery and has pioneered several techniques in endoscopic surgery. She is an award-winning researcher and educator.",
-        status: "confirmed",
-        isPublished: true,
-        linkedin: "https://linkedin.com/in/drpriyasharma",
-    },
-    {
-        id: 3,
-        name: "Dr. Amit Patel",
-        photo: null,
-        designation: "Consultant Neurophysiologist",
-        department: "Clinical Neurophysiology",
-        institution: "Kokilaben Hospital, Mumbai",
-        email: "amit.patel@kokilaben.com",
-        phone: "+91 76543 21098",
-        topic: "Intraoperative Neurophysiological Monitoring",
-        sessionDate: "2025-01-16",
-        sessionTime: "09:00 AM - 10:00 AM",
-        biography: "Dr. Amit Patel is an expert in intraoperative neurophysiological monitoring with experience in over 5000 surgeries.",
-        status: "pending",
-        isPublished: false,
-    },
-    {
-        id: 4,
-        name: "Dr. Sarah Johnson",
-        photo: null,
-        designation: "Professor",
-        department: "Neuroscience",
-        institution: "Johns Hopkins University, USA",
-        email: "sjohnson@jhu.edu",
-        phone: "+1 410 555 0123",
-        topic: "Future of Brain-Computer Interfaces",
-        sessionDate: "2025-01-16",
-        sessionTime: "02:00 PM - 03:30 PM",
-        biography: "Dr. Sarah Johnson is a leading researcher in brain-computer interfaces and neural engineering. She leads a team of 30 researchers at Johns Hopkins.",
-        status: "invited",
-        isPublished: false,
-        website: "https://www.sarahjohnsonlab.com",
-    },
-];
+// Display speaker type
+interface DisplaySpeaker {
+    id: string;
+    name: string;
+    photo: string | null;
+    designation: string | null;
+    department: string | null;
+    institution: string | null;
+    email: string;
+    phone: string | null;
+    biography: string | null;
+    isActive: boolean;
+    linkedin: string | null;
+    twitter: string | null;
+    website: string | null;
+    eventCount: number;
+    events: {
+        id: string;
+        title: string;
+        topic: string | null;
+        status: string;
+        startDate: string;
+    }[];
+}
 
 export default function SpeakersPage() {
+    const [speakers, setSpeakers] = useState<DisplaySpeaker[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState("");
     const [isCreateOpen, setIsCreateOpen] = useState(false);
-    const [selectedSpeaker, setSelectedSpeaker] = useState<typeof speakers[0] | null>(null);
+    const [selectedSpeaker, setSelectedSpeaker] = useState<DisplaySpeaker | null>(null);
     const [isViewOpen, setIsViewOpen] = useState(false);
     const [selectedTab, setSelectedTab] = useState("all");
 
+    const { confirm, ConfirmDialog } = useConfirmDialog();
+    const { alert, AlertDialog } = useAlertDialog();
+
+    // Fetch speakers from API
+    useEffect(() => {
+        async function fetchSpeakers() {
+            try {
+                setLoading(true);
+                const response = await speakersService.getAll();
+
+                if (response.success && response.data) {
+                    const speakersList = Array.isArray(response.data) ? response.data : [];
+                    const mappedSpeakers: DisplaySpeaker[] = speakersList.map((speaker: Speaker) => ({
+                        id: speaker.id,
+                        name: speaker.name,
+                        photo: speaker.photo,
+                        designation: speaker.designation,
+                        department: speaker.department,
+                        institution: speaker.institution,
+                        email: speaker.email,
+                        phone: speaker.phone,
+                        biography: speaker.biography,
+                        isActive: speaker.isActive,
+                        linkedin: speaker.linkedin,
+                        twitter: speaker.twitter,
+                        website: speaker.website,
+                        eventCount: speaker._count?.eventSpeakers || speaker.eventSpeakers?.length || 0,
+                        events: speaker.eventSpeakers?.map((es) => ({
+                            id: es.event.id,
+                            title: es.event.title,
+                            topic: es.topic,
+                            status: es.status,
+                            startDate: new Date(es.event.startDate).toLocaleDateString("en-IN", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                            }),
+                        })) || [],
+                    }));
+                    setSpeakers(mappedSpeakers);
+                }
+            } catch (error) {
+                console.error("Failed to fetch speakers:", error);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchSpeakers();
+    }, []);
+
+    // Filter speakers
     const filteredSpeakers = speakers.filter((speaker) => {
-        if (selectedTab === "all") return true;
-        if (selectedTab === "published") return speaker.isPublished;
-        return speaker.status === selectedTab;
+        const matchesSearch = searchQuery === "" ||
+            speaker.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            speaker.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            speaker.institution?.toLowerCase().includes(searchQuery.toLowerCase());
+
+        if (selectedTab === "all") return matchesSearch;
+        if (selectedTab === "active") return matchesSearch && speaker.isActive;
+        if (selectedTab === "inactive") return matchesSearch && !speaker.isActive;
+        if (selectedTab === "with-events") return matchesSearch && speaker.eventCount > 0;
+        return matchesSearch;
     });
+
+    // Stats
+    const totalSpeakers = speakers.length;
+    const activeSpeakers = speakers.filter((s) => s.isActive).length;
+    const speakersWithEvents = speakers.filter((s) => s.eventCount > 0).length;
+    const totalEventAssignments = speakers.reduce((sum, s) => sum + s.eventCount, 0);
+
+    // Delete speaker handler (soft delete - set isActive = false)
+    const handleDeleteSpeaker = async (speaker: DisplaySpeaker) => {
+        const confirmed = await confirm({
+            title: "Delete Speaker",
+            description: `Are you sure you want to delete "${speaker.name}"? They will be marked as inactive and won't appear in new event selections.`,
+            confirmText: "Delete",
+            cancelText: "Cancel",
+            variant: "danger",
+        });
+
+        if (!confirmed) return;
+
+        try {
+            const response = await speakersService.update(speaker.id, { isActive: false });
+            if (response.success) {
+                setSpeakers((prev) =>
+                    prev.map((s) => (s.id === speaker.id ? { ...s, isActive: false } : s))
+                );
+            } else {
+                const errorMessage = typeof response.error === 'string'
+                    ? response.error
+                    : response.error?.message || "Failed to delete speaker";
+                alert({
+                    title: "Delete Failed",
+                    description: errorMessage,
+                    variant: "error",
+                });
+            }
+        } catch (error) {
+            console.error("Failed to delete speaker:", error);
+            alert({
+                title: "Delete Failed",
+                description: "An unexpected error occurred while deleting the speaker.",
+                variant: "error",
+            });
+        }
+    };
+
+    // Restore speaker handler (set isActive = true)
+    const handleRestoreSpeaker = async (speaker: DisplaySpeaker) => {
+        try {
+            const response = await speakersService.update(speaker.id, { isActive: true });
+            if (response.success) {
+                setSpeakers((prev) =>
+                    prev.map((s) => (s.id === speaker.id ? { ...s, isActive: true } : s))
+                );
+            } else {
+                const errorMessage = typeof response.error === 'string'
+                    ? response.error
+                    : response.error?.message || "Failed to restore speaker";
+                alert({
+                    title: "Restore Failed",
+                    description: errorMessage,
+                    variant: "error",
+                });
+            }
+        } catch (error) {
+            console.error("Failed to restore speaker:", error);
+            alert({
+                title: "Restore Failed",
+                description: "An unexpected error occurred while restoring the speaker.",
+                variant: "error",
+            });
+        }
+    };
 
     const getStatusBadge = (status: string) => {
         const statusConfig: Record<string, { class: string; label: string }> = {
-            confirmed: { class: "status-active", label: "Confirmed" },
-            pending: { class: "status-pending", label: "Pending" },
-            invited: { class: "status-upcoming", label: "Invited" },
-            declined: { class: "bg-destructive/10 text-destructive", label: "Declined" },
+            CONFIRMED: { class: "bg-green-100 text-green-700", label: "Confirmed" },
+            PENDING: { class: "bg-yellow-100 text-yellow-700", label: "Pending" },
+            INVITED: { class: "bg-blue-100 text-blue-700", label: "Invited" },
+            DECLINED: { class: "bg-red-100 text-red-700", label: "Declined" },
         };
-        const config = statusConfig[status] || statusConfig.pending;
+        const config = statusConfig[status] || statusConfig.PENDING;
         return (
-            <Badge variant="outline" className={cn("border-0", config.class)}>
+            <Badge variant="outline" className={cn("border-0 text-xs", config.class)}>
                 {config.label}
             </Badge>
         );
@@ -156,11 +247,24 @@ export default function SpeakersPage() {
             .slice(0, 2);
     };
 
+    // Loading state
+    if (loading) {
+        return (
+            <DashboardLayout title="Speakers" subtitle="Manage speaker profiles and session assignments">
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            </DashboardLayout>
+        );
+    }
+
     return (
         <DashboardLayout
             title="Speakers"
             subtitle="Manage speaker profiles and session assignments"
         >
+            <ConfirmDialog />
+            <AlertDialog />
             <div className="space-y-6 animate-fadeIn">
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
@@ -171,7 +275,7 @@ export default function SpeakersPage() {
                                     <User className="h-5 w-5 sm:h-6 sm:w-6" />
                                 </div>
                                 <div>
-                                    <p className="text-xl sm:text-2xl font-bold">{speakers.length}</p>
+                                    <p className="text-xl sm:text-2xl font-bold">{totalSpeakers}</p>
                                     <p className="text-xs sm:text-sm text-muted-foreground">Total</p>
                                 </div>
                             </div>
@@ -184,10 +288,8 @@ export default function SpeakersPage() {
                                     <GraduationCap className="h-5 w-5 sm:h-6 sm:w-6" />
                                 </div>
                                 <div>
-                                    <p className="text-xl sm:text-2xl font-bold">
-                                        {speakers.filter((s) => s.status === "confirmed").length}
-                                    </p>
-                                    <p className="text-xs sm:text-sm text-muted-foreground">Confirmed</p>
+                                    <p className="text-xl sm:text-2xl font-bold">{activeSpeakers}</p>
+                                    <p className="text-xs sm:text-sm text-muted-foreground">Active</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -196,13 +298,11 @@ export default function SpeakersPage() {
                         <CardContent className="p-3 sm:pt-6 sm:p-6">
                             <div className="flex items-center gap-2 sm:gap-4">
                                 <div className="icon-container icon-container-orange h-10 w-10 sm:h-12 sm:w-12">
-                                    <Clock className="h-5 w-5 sm:h-6 sm:w-6" />
+                                    <Calendar className="h-5 w-5 sm:h-6 sm:w-6" />
                                 </div>
                                 <div>
-                                    <p className="text-xl sm:text-2xl font-bold">
-                                        {speakers.filter((s) => s.status === "pending" || s.status === "invited").length}
-                                    </p>
-                                    <p className="text-xs sm:text-sm text-muted-foreground">Pending</p>
+                                    <p className="text-xl sm:text-2xl font-bold">{speakersWithEvents}</p>
+                                    <p className="text-xs sm:text-sm text-muted-foreground">With Events</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -214,10 +314,8 @@ export default function SpeakersPage() {
                                     <Globe className="h-5 w-5 sm:h-6 sm:w-6" />
                                 </div>
                                 <div>
-                                    <p className="text-xl sm:text-2xl font-bold">
-                                        {speakers.filter((s) => s.isPublished).length}
-                                    </p>
-                                    <p className="text-xs sm:text-sm text-muted-foreground">Published</p>
+                                    <p className="text-xl sm:text-2xl font-bold">{totalEventAssignments}</p>
+                                    <p className="text-xs sm:text-sm text-muted-foreground">Assignments</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -229,11 +327,21 @@ export default function SpeakersPage() {
                     <div className="flex flex-1 gap-3">
                         <div className="relative flex-1 max-w-md">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <Input placeholder="Search speakers..." className="pl-10" />
+                            <Input
+                                placeholder="Search speakers..."
+                                className="pl-10 pr-10"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery("")}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            )}
                         </div>
-                        <Button variant="outline" size="icon">
-                            <Filter className="w-4 h-4" />
-                        </Button>
                     </div>
                     <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                         <DialogTrigger asChild>
@@ -246,7 +354,7 @@ export default function SpeakersPage() {
                             <DialogHeader>
                                 <DialogTitle>Add New Speaker</DialogTitle>
                                 <DialogDescription>
-                                    Add a speaker profile for your event
+                                    Add a speaker profile for your events
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
@@ -274,7 +382,7 @@ export default function SpeakersPage() {
                                         <Input id="name" placeholder="Dr. John Smith" className="h-9 sm:h-10" />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="designation" className="text-xs sm:text-sm">Designation *</Label>
+                                        <Label htmlFor="designation" className="text-xs sm:text-sm">Designation</Label>
                                         <Input id="designation" placeholder="Professor & Head" className="h-9 sm:h-10" />
                                     </div>
                                     <div className="space-y-2">
@@ -284,7 +392,7 @@ export default function SpeakersPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="institution">Institution *</Label>
+                                    <Label htmlFor="institution">Institution</Label>
                                     <Input id="institution" placeholder="Medical College Name" />
                                 </div>
 
@@ -304,32 +412,9 @@ export default function SpeakersPage() {
 
                                 <div className="section-divider-gradient my-2" />
 
-                                {/* Session Info */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="topic" className="text-xs sm:text-sm">Topic / Session Title *</Label>
-                                    <Input id="topic" placeholder="Advances in Neurostimulation" className="h-9 sm:h-10" />
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="sessionDate" className="text-xs sm:text-sm">Session Date</Label>
-                                        <Input id="sessionDate" type="date" className="h-9 sm:h-10" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="startTime" className="text-xs sm:text-sm">Start Time</Label>
-                                        <Input id="startTime" type="time" className="h-9 sm:h-10" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="endTime" className="text-xs sm:text-sm">End Time</Label>
-                                        <Input id="endTime" type="time" className="h-9 sm:h-10" />
-                                    </div>
-                                </div>
-
-                                <div className="section-divider-gradient my-2" />
-
                                 {/* Biography */}
                                 <div className="space-y-2">
-                                    <Label htmlFor="biography">Short Biography *</Label>
+                                    <Label htmlFor="biography">Short Biography</Label>
                                     <Textarea
                                         id="biography"
                                         placeholder="A brief introduction about the speaker's background, achievements, and expertise..."
@@ -349,15 +434,15 @@ export default function SpeakersPage() {
                                     </div>
                                 </div>
 
-                                {/* Status & Publish */}
+                                {/* Active Status */}
                                 <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
                                     <div className="space-y-0.5">
-                                        <Label>Publish on Event Page</Label>
+                                        <Label>Active Speaker</Label>
                                         <p className="text-xs text-muted-foreground">
-                                            Make this speaker visible to attendees
+                                            Active speakers can be assigned to events
                                         </p>
                                     </div>
-                                    <Switch />
+                                    <Switch defaultChecked />
                                 </div>
                             </div>
                             <DialogFooter>
@@ -393,15 +478,19 @@ export default function SpeakersPage() {
                                                 </span>
                                                 {selectedSpeaker.department && `, ${selectedSpeaker.department}`}
                                             </DialogDescription>
-                                            <div className="flex items-center gap-2 mt-2">
-                                                <Building2 className="h-4 w-4 text-muted-foreground" />
-                                                <span className="text-sm">{selectedSpeaker.institution}</span>
-                                            </div>
+                                            {selectedSpeaker.institution && (
+                                                <div className="flex items-center gap-2 mt-2">
+                                                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                                                    <span className="text-sm">{selectedSpeaker.institution}</span>
+                                                </div>
+                                            )}
                                             <div className="flex gap-2 mt-3">
-                                                {getStatusBadge(selectedSpeaker.status)}
-                                                {selectedSpeaker.isPublished && (
-                                                    <Badge variant="secondary">Published</Badge>
-                                                )}
+                                                <Badge variant={selectedSpeaker.isActive ? "default" : "secondary"}>
+                                                    {selectedSpeaker.isActive ? "Active" : "Inactive"}
+                                                </Badge>
+                                                <Badge variant="outline">
+                                                    {selectedSpeaker.eventCount} Event{selectedSpeaker.eventCount !== 1 ? "s" : ""}
+                                                </Badge>
                                             </div>
                                         </div>
                                     </div>
@@ -409,31 +498,38 @@ export default function SpeakersPage() {
                                 <div className="space-y-4 mt-4">
                                     <div className="section-divider-gradient" />
 
-                                    {/* Session Info */}
-                                    <div className="p-4 rounded-lg gradient-medical-light border border-primary/10">
-                                        <h4 className="font-semibold mb-2">Session Details</h4>
-                                        <p className="text-sm font-medium text-primary mb-2">
-                                            {selectedSpeaker.topic}
-                                        </p>
-                                        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                                            <div className="flex items-center gap-1">
-                                                <Calendar className="h-4 w-4" />
-                                                {selectedSpeaker.sessionDate}
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                                <Clock className="h-4 w-4" />
-                                                {selectedSpeaker.sessionTime}
+                                    {/* Event Assignments */}
+                                    {selectedSpeaker.events.length > 0 && (
+                                        <div>
+                                            <h4 className="font-semibold mb-2">Event Assignments</h4>
+                                            <div className="space-y-2">
+                                                {selectedSpeaker.events.map((event) => (
+                                                    <div key={event.id} className="p-3 rounded-lg bg-muted/50">
+                                                        <div className="flex items-start justify-between">
+                                                            <div>
+                                                                <p className="font-medium text-sm">{event.title}</p>
+                                                                {event.topic && (
+                                                                    <p className="text-sm text-primary mt-1">Topic: {event.topic}</p>
+                                                                )}
+                                                                <p className="text-xs text-muted-foreground mt-1">{event.startDate}</p>
+                                                            </div>
+                                                            {getStatusBadge(event.status)}
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
-                                    </div>
+                                    )}
 
                                     {/* Biography */}
-                                    <div>
-                                        <h4 className="font-semibold mb-2">Biography</h4>
-                                        <p className="text-sm text-muted-foreground leading-relaxed">
-                                            {selectedSpeaker.biography}
-                                        </p>
-                                    </div>
+                                    {selectedSpeaker.biography && (
+                                        <div>
+                                            <h4 className="font-semibold mb-2">Biography</h4>
+                                            <p className="text-sm text-muted-foreground leading-relaxed">
+                                                {selectedSpeaker.biography}
+                                            </p>
+                                        </div>
+                                    )}
 
                                     {/* Contact */}
                                     <div>
@@ -508,16 +604,13 @@ export default function SpeakersPage() {
                         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
                             <TabsList className="w-full sm:w-auto h-auto flex-wrap sm:flex-nowrap gap-1 p-1">
                                 <TabsTrigger value="all" className="flex-1 sm:flex-none text-xs sm:text-sm px-2 sm:px-3 py-1.5">
-                                    All
+                                    All ({totalSpeakers})
                                 </TabsTrigger>
-                                <TabsTrigger value="confirmed" className="flex-1 sm:flex-none text-xs sm:text-sm px-2 sm:px-3 py-1.5">
-                                    Confirmed
+                                <TabsTrigger value="active" className="flex-1 sm:flex-none text-xs sm:text-sm px-2 sm:px-3 py-1.5">
+                                    Active ({activeSpeakers})
                                 </TabsTrigger>
-                                <TabsTrigger value="pending" className="flex-1 sm:flex-none text-xs sm:text-sm px-2 sm:px-3 py-1.5">
-                                    Pending
-                                </TabsTrigger>
-                                <TabsTrigger value="published" className="flex-1 sm:flex-none text-xs sm:text-sm px-2 sm:px-3 py-1.5">
-                                    Published
+                                <TabsTrigger value="with-events" className="flex-1 sm:flex-none text-xs sm:text-sm px-2 sm:px-3 py-1.5">
+                                    With Events ({speakersWithEvents})
                                 </TabsTrigger>
                             </TabsList>
                         </Tabs>
@@ -542,7 +635,7 @@ export default function SpeakersPage() {
                                                 <div>
                                                     <h3 className="font-semibold truncate">{speaker.name}</h3>
                                                     <p className="text-sm text-muted-foreground truncate">
-                                                        {speaker.designation}
+                                                        {speaker.designation || "Speaker"}
                                                     </p>
                                                 </div>
                                                 <DropdownMenu>
@@ -570,44 +663,64 @@ export default function SpeakersPage() {
                                                             Send Email
                                                         </DropdownMenuItem>
                                                         <DropdownMenuSeparator />
-                                                        <DropdownMenuItem className="text-destructive">
-                                                            <Trash2 className="mr-2 h-4 w-4" />
-                                                            Delete
-                                                        </DropdownMenuItem>
+                                                        {speaker.isActive ? (
+                                                            <DropdownMenuItem
+                                                                className="text-destructive"
+                                                                onClick={() => handleDeleteSpeaker(speaker)}
+                                                            >
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                Delete
+                                                            </DropdownMenuItem>
+                                                        ) : (
+                                                            <DropdownMenuItem
+                                                                onClick={() => handleRestoreSpeaker(speaker)}
+                                                            >
+                                                                <RotateCcw className="mr-2 h-4 w-4" />
+                                                                Restore
+                                                            </DropdownMenuItem>
+                                                        )}
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
-                                        <Building2 className="h-3 w-3" />
-                                        <span className="truncate">{speaker.institution}</span>
-                                    </div>
+                                    {speaker.institution && (
+                                        <div className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
+                                            <Building2 className="h-3 w-3" />
+                                            <span className="truncate">{speaker.institution}</span>
+                                        </div>
+                                    )}
 
-                                    <div className="mt-3 p-3 rounded-lg bg-muted/50">
-                                        <p className="text-sm font-medium text-foreground line-clamp-2">
-                                            {speaker.topic}
-                                        </p>
-                                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                                            <div className="flex items-center gap-1">
-                                                <Calendar className="h-3 w-3" />
-                                                {speaker.sessionDate}
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                                <Clock className="h-3 w-3" />
-                                                {speaker.sessionTime?.split(" - ")[0]}
+                                    {speaker.events.length > 0 && (
+                                        <div className="mt-3 p-3 rounded-lg bg-muted/50">
+                                            <p className="text-sm font-medium text-foreground line-clamp-1">
+                                                {speaker.events[0].title}
+                                            </p>
+                                            {speaker.events[0].topic && (
+                                                <p className="text-xs text-primary mt-1 line-clamp-1">
+                                                    {speaker.events[0].topic}
+                                                </p>
+                                            )}
+                                            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                                                <div className="flex items-center gap-1">
+                                                    <Calendar className="h-3 w-3" />
+                                                    {speaker.events[0].startDate}
+                                                </div>
+                                                {speaker.eventCount > 1 && (
+                                                    <span className="text-primary">+{speaker.eventCount - 1} more</span>
+                                                )}
                                             </div>
                                         </div>
-                                    </div>
+                                    )}
 
                                     <div className="mt-3 flex items-center justify-between">
-                                        {getStatusBadge(speaker.status)}
-                                        {speaker.isPublished && (
-                                            <Badge variant="outline" className="bg-medical-green-light text-medical-green border-0">
-                                                Published
-                                            </Badge>
-                                        )}
+                                        <Badge variant={speaker.isActive ? "default" : "secondary"} className="text-xs">
+                                            {speaker.isActive ? "Active" : "Inactive"}
+                                        </Badge>
+                                        <span className="text-xs text-muted-foreground">
+                                            {speaker.eventCount} event{speaker.eventCount !== 1 ? "s" : ""}
+                                        </span>
                                     </div>
                                 </div>
                             ))}
@@ -618,11 +731,11 @@ export default function SpeakersPage() {
                                 <User className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
                                 <h3 className="text-lg font-medium mb-2">No speakers found</h3>
                                 <p className="text-sm text-muted-foreground mb-4">
-                                    {selectedTab === "all"
+                                    {speakers.length === 0
                                         ? "Add your first speaker to get started"
-                                        : "No speakers match this filter"}
+                                        : "No speakers match your search"}
                                 </p>
-                                {selectedTab === "all" && (
+                                {speakers.length === 0 && (
                                     <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
                                         <Plus className="h-4 w-4" />
                                         Add Speaker

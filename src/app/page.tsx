@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -31,6 +31,7 @@ import {
     Globe,
     Heart,
     Zap,
+    Eye,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -46,172 +47,81 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { getEventImage } from "@/lib/event-utils";
+import { EVENT_CATEGORIES } from "@/lib/event-constants";
+import { eventsService, Event } from "@/services/events";
+import { sponsorsService, Sponsor } from "@/services/sponsors";
 
-// Mock upcoming events data
-const upcomingEvents = [
-    {
-        id: 1,
-        title: "National Neurostimulation Summit 2026",
-        shortDescription: "Join 200+ leading neurologists and neurosurgeons for India's premier neurostimulation conference.",
-        date: "Jan 10-11, 2026",
-        time: "09:00 AM - 05:00 PM",
-        location: "Grand Conference Hall, AIIMS, New Delhi",
-        type: "Conference",
-        category: "Neurology",
-        registrations: 156,
-        capacity: 200,
-        price: 6500,
-        earlyBirdPrice: 5000,
-        earlyBirdDeadline: "Dec 31, 2025",
-        cmeCredits: 16,
-        image: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&h=600&fit=crop",
-        featured: true,
-        status: "upcoming",
-    },
-    {
-        id: 2,
-        title: "Deep Brain Stimulation Workshop",
-        shortDescription: "Hands-on workshop on DBS programming, troubleshooting, and patient management.",
-        date: "Jan 5, 2026",
-        time: "09:00 AM - 05:00 PM",
-        location: "CMC Vellore",
-        type: "Workshop",
-        category: "Surgery",
-        registrations: 27,
-        capacity: 30,
-        price: 4500,
-        earlyBirdPrice: 3800,
-        earlyBirdDeadline: "Dec 30, 2025",
-        cmeCredits: 8,
-        image: "https://images.unsplash.com/photo-1551076805-e1869033e561?w=800&h=600&fit=crop",
-        featured: false,
-        status: "upcoming",
-    },
-    {
-        id: 3,
-        title: "Epilepsy Management CME Session",
-        shortDescription: "Latest advances in epilepsy diagnosis, medical management, and surgical interventions.",
-        date: "Dec 29, 2025",
-        time: "02:00 PM - 06:00 PM",
-        location: "NIMHANS, Bangalore",
-        type: "CME",
-        category: "Neurology",
-        registrations: 72,
-        capacity: 80,
-        price: 1500,
-        earlyBirdPrice: null,
-        earlyBirdDeadline: null,
-        cmeCredits: 4,
-        image: "https://images.unsplash.com/photo-1559757175-0eb30cd8c063?w=800&h=600&fit=crop",
-        featured: false,
-        status: "upcoming",
-    },
-    {
-        id: 4,
-        title: "Neural Engineering Research Symposium",
-        shortDescription: "Cutting-edge research in brain-computer interfaces and neuroprosthetics.",
-        date: "Jan 18, 2026",
-        time: "09:00 AM - 06:00 PM",
-        location: "Virtual Event (Zoom)",
-        type: "Symposium",
-        category: "Research",
-        registrations: 89,
-        capacity: 200,
-        price: 2000,
-        earlyBirdPrice: 1500,
-        earlyBirdDeadline: "Jan 10, 2026",
-        cmeCredits: 8,
-        image: "https://images.unsplash.com/photo-1631815588090-d4bfec5b1ccb?w=800&h=600&fit=crop",
-        featured: false,
-        status: "upcoming",
-    },
-    {
-        id: 5,
-        title: "Pediatric Neurology Masterclass",
-        shortDescription: "Focused workshop on pediatric epilepsy surgery and vagus nerve stimulation.",
-        date: "Jan 25, 2026",
-        time: "09:00 AM - 04:00 PM",
-        location: "Apollo Hospital, Chennai",
-        type: "Masterclass",
-        category: "Pediatrics",
-        registrations: 18,
-        capacity: 25,
-        price: 5500,
-        earlyBirdPrice: 4800,
-        earlyBirdDeadline: "Jan 15, 2026",
-        cmeCredits: 6,
-        image: "https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=800&h=600&fit=crop",
-        featured: false,
-        status: "upcoming",
-    },
-    {
-        id: 6,
-        title: "Medical AI & Innovation Forum",
-        shortDescription: "Exploring AI applications in neurology, diagnostics, and patient care.",
-        date: "Feb 8, 2026",
-        time: "10:00 AM - 06:00 PM",
-        location: "Hyderabad International Convention Centre",
-        type: "Forum",
-        category: "Technology",
-        registrations: 95,
-        capacity: 250,
-        price: 3000,
-        earlyBirdPrice: 2500,
-        earlyBirdDeadline: "Jan 25, 2026",
-        cmeCredits: 6,
-        image: "https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?w=800&h=600&fit=crop",
-        featured: false,
-        status: "upcoming",
-    },
-];
+// Event type for display
+interface DisplayEvent {
+    id: string;
+    title: string;
+    shortDescription: string | null;
+    date: string;
+    time: string;
+    location: string;
+    type: string;
+    category: string | null;
+    registrations: number;
+    capacity: number;
+    price: number;
+    earlyBirdPrice: number | null;
+    earlyBirdDeadline: string | null;
+    cmeCredits: number | null;
+    image: string | null;
+    featured: boolean;
+    status: string;
+}
 
-// Sponsors data with tiers
-const sponsors = [
-    { name: "Medtronic India", tier: "platinum", logo: "/sponsors/medtronic.svg" },
-    { name: "Boston Scientific", tier: "platinum", logo: "/sponsors/boston.svg" },
-    { name: "Abbott Neuromodulation", tier: "gold", logo: "/sponsors/abbott.svg" },
-    { name: "Stryker India", tier: "gold", logo: "/sponsors/stryker.svg" },
-    { name: "Sun Pharma", tier: "gold", logo: "/sponsors/sunpharma.svg" },
-    { name: "Cipla Neurosciences", tier: "silver", logo: "/sponsors/cipla.svg" },
-    { name: "LivaNova", tier: "silver", logo: "/sponsors/livanova.svg" },
-    { name: "Nevro Corp", tier: "silver", logo: "/sponsors/nevro.svg" },
-    { name: "St. Jude Medical", tier: "gold", logo: "/sponsors/stjude.svg" },
-    { name: "Bioness Inc", tier: "platinum", logo: "/sponsors/bioness.svg" },
-];
+// Sponsor type for display
+interface DisplaySponsor {
+    name: string;
+    tier: string;
+    logo: string | null;
+}
 
-const categories = ["All", "Neurology", "Surgery", "Research", "Pediatrics", "Technology"];
+// Build categories from shared constants
+const categories = ["All", ...EVENT_CATEGORIES.map(c => c.value)];
 
-// Custom hook for scroll reveal animations
-function useScrollReveal() {
+// Custom hook for scroll reveal animations - re-runs when dependencies change
+function useScrollReveal(deps: unknown[] = []) {
     useEffect(() => {
-        const elements = document.querySelectorAll("[data-scroll-reveal]");
+        let observer: IntersectionObserver | null = null;
 
-        // Immediately reveal elements already in viewport
-        elements.forEach((el) => {
-            const rect = el.getBoundingClientRect();
-            if (rect.top < window.innerHeight * 0.9) {
-                el.classList.add("revealed");
-            }
-        });
+        // Small delay to ensure DOM has updated after state changes
+        const timeoutId = setTimeout(() => {
+            const elements = document.querySelectorAll("[data-scroll-reveal]");
 
-        const observer = new IntersectionObserver(
-            (entries) => {
-                entries.forEach((entry) => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add("revealed");
-                    }
-                });
-            },
-            {
-                threshold: 0.1,
-                rootMargin: "0px 0px -50px 0px",
-            }
-        );
+            observer = new IntersectionObserver(
+                (entries) => {
+                    entries.forEach((entry) => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add("revealed");
+                        }
+                    });
+                },
+                {
+                    threshold: 0.1,
+                    rootMargin: "0px 0px -50px 0px",
+                }
+            );
 
-        elements.forEach((el) => observer.observe(el));
+            // Observe all elements and immediately reveal those in viewport
+            elements.forEach((el) => {
+                const rect = el.getBoundingClientRect();
+                if (rect.top < window.innerHeight * 0.9) {
+                    el.classList.add("revealed");
+                }
+                observer?.observe(el);
+            });
+        }, 100);
 
-        return () => observer.disconnect();
-    }, []);
+        return () => {
+            clearTimeout(timeoutId);
+            observer?.disconnect();
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, deps);
 }
 
 // Floating Bubbles Component
@@ -263,11 +173,16 @@ export default function PublicHomePage() {
     const [otpVerified, setOtpVerified] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [activeCategory, setActiveCategory] = useState("All");
-    const [hoveredEvent, setHoveredEvent] = useState<number | null>(null);
+    const [hoveredEvent, setHoveredEvent] = useState<string | null>(null);
+
+    // Data from API
+    const [upcomingEvents, setUpcomingEvents] = useState<DisplayEvent[]>([]);
+    const [sponsors, setSponsors] = useState<DisplaySponsor[]>([]);
+    const [dataLoading, setDataLoading] = useState(true);
 
     // Carousel state
     const [currentSlide, setCurrentSlide] = useState(0);
-    const featuredEvents = upcomingEvents.filter(e => e.status === "upcoming").slice(0, 3);
+    const featuredEvents = upcomingEvents.filter(e => e.status === "UPCOMING" || e.status === "ACTIVE").slice(0, 3);
 
     // Form states
     const [phone, setPhone] = useState("");
@@ -277,11 +192,69 @@ export default function PublicHomePage() {
     const [name, setName] = useState("");
     const [activeSection, setActiveSection] = useState("Home");
 
-    // Initialize scroll reveal
-    useScrollReveal();
-
-    // Auto-advance carousel
+    // Fetch events and sponsors from API
     useEffect(() => {
+        async function fetchData() {
+            try {
+                setDataLoading(true);
+
+                const [eventsRes, sponsorsRes] = await Promise.all([
+                    eventsService.getPublic({ limit: 20 }),
+                    sponsorsService.getAll({ isActive: true, limit: 20 }),
+                ]);
+
+                if (eventsRes.success && eventsRes.data) {
+                    const events = Array.isArray(eventsRes.data) ? eventsRes.data : [];
+                    const mappedEvents = events.map((event: Event) => ({
+                        id: event.id,
+                        title: event.title,
+                        shortDescription: event.shortDescription,
+                        date: new Date(event.startDate).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                        }),
+                        time: event.startTime || "09:00 AM",
+                        location: [event.location, event.city].filter(Boolean).join(", ") || "Virtual",
+                        type: event.type,
+                        category: event.category,
+                        registrations: event._count?.registrations || 0,
+                        capacity: event.capacity,
+                        price: event.price,
+                        earlyBirdPrice: event.earlyBirdPrice,
+                        earlyBirdDeadline: event.earlyBirdDeadline,
+                        cmeCredits: event.cmeCredits,
+                        image: getEventImage(event.bannerImage, event.thumbnailImage, event.type),
+                        featured: event.isFeatured,
+                        status: event.status,
+                    }));
+                    setUpcomingEvents(mappedEvents);
+                }
+
+                if (sponsorsRes.success && sponsorsRes.data) {
+                    const sponsorList = Array.isArray(sponsorsRes.data) ? sponsorsRes.data : [];
+                    const displaySponsors: DisplaySponsor[] = sponsorList.map((sponsor: Sponsor) => ({
+                        name: sponsor.name,
+                        tier: sponsor.eventSponsors?.[0]?.tier?.toLowerCase() || "silver",
+                        logo: sponsor.logo,
+                    }));
+                    setSponsors(displaySponsors);
+                }
+            } catch (error) {
+                console.error("Failed to fetch data:", error);
+            } finally {
+                setDataLoading(false);
+            }
+        }
+        fetchData();
+    }, []);
+
+    // Initialize scroll reveal - re-run when events load or filter changes
+    useScrollReveal([dataLoading, activeCategory]);
+
+    // Auto-advance carousel (only when there are featured events)
+    useEffect(() => {
+        if (featuredEvents.length === 0) return;
         const timer = setInterval(() => {
             setCurrentSlide((prev) => (prev + 1) % featuredEvents.length);
         }, 6000);
@@ -313,18 +286,23 @@ export default function PublicHomePage() {
     }, []);
 
     const nextSlide = useCallback(() => {
+        if (featuredEvents.length === 0) return;
         setCurrentSlide((prev) => (prev + 1) % featuredEvents.length);
     }, [featuredEvents.length]);
 
     const prevSlide = useCallback(() => {
+        if (featuredEvents.length === 0) return;
         setCurrentSlide((prev) => (prev - 1 + featuredEvents.length) % featuredEvents.length);
     }, [featuredEvents.length]);
 
-    // Filter events
-    const filteredEvents = upcomingEvents.filter((event) => {
-        if (activeCategory === "All") return event.status === "upcoming";
-        return event.category === activeCategory && event.status === "upcoming";
-    });
+    // Filter events - include both UPCOMING and ACTIVE status
+    const filteredEvents = useMemo(() => {
+        return upcomingEvents.filter((event) => {
+            const isValidStatus = event.status === "UPCOMING" || event.status === "ACTIVE";
+            if (activeCategory === "All") return isValidStatus;
+            return event.category === activeCategory && isValidStatus;
+        });
+    }, [upcomingEvents, activeCategory]);
 
     const handleSendOtp = async () => {
         if (!phone || phone.length < 10) return;
@@ -372,7 +350,7 @@ export default function PublicHomePage() {
         setName("");
     };
 
-    const getSlotsInfo = (event: typeof upcomingEvents[0]) => {
+    const getSlotsInfo = (event: DisplayEvent) => {
         const remaining = event.capacity - event.registrations;
         if (remaining <= 0) return { text: "Sold Out", color: "text-red-500", urgent: true };
         if (remaining <= 10) return { text: `Only ${remaining} left!`, color: "text-orange-500", urgent: true };
@@ -756,115 +734,151 @@ export default function PublicHomePage() {
                     </div>
 
                     {/* Events Grid - Premium Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {filteredEvents.map((event, index) => {
-                            const slots = getSlotsInfo(event);
-                            const isHovered = hoveredEvent === event.id;
+                    {dataLoading ? (
+                        <div className="flex items-center justify-center py-20">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                    ) : filteredEvents?.length === 0 ? (
+                        <div className="text-center py-16">
+                            <Calendar className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
+                            <h3 className="text-xl font-semibold mb-2">No Events Found</h3>
+                            <p className="text-muted-foreground">
+                                {activeCategory === "All"
+                                    ? "There are no upcoming events at the moment. Check back soon!"
+                                    : `No events found in ${activeCategory} category.`}
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {filteredEvents?.map((event, index) => {
+                                const slots = getSlotsInfo(event);
+                                const isHovered = hoveredEvent === event.id;
 
-                            return (
-                                <div
-                                    key={event.id}
-                                    data-scroll-reveal="scale"
-                                    data-scroll-delay={String((index % 3) + 1)}
-                                    className="relative bg-white rounded-[2rem] overflow-hidden border border-border/30 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 group cursor-pointer h-[420px] flex flex-col"
-                                    onMouseEnter={() => setHoveredEvent(event.id)}
-                                    onMouseLeave={() => setHoveredEvent(null)}
-                                >
-                                    {/* Image Container */}
-                                    <div className="relative overflow-hidden h-48 flex-shrink-0">
-                                        <div
-                                            className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
-                                            style={{ backgroundImage: `url(${event.image})` }}
-                                        />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                                return (
+                                    <div
+                                        key={event.id}
+                                        data-scroll-reveal="scale"
+                                        data-scroll-delay={String((index % 3) + 1)}
+                                        className="relative bg-white rounded-[2rem] overflow-hidden border border-border/30 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 group cursor-pointer h-[420px] flex flex-col"
+                                        onMouseEnter={() => setHoveredEvent(event.id)}
+                                        onMouseLeave={() => setHoveredEvent(null)}
+                                    >
+                                        {/* Image Container */}
+                                        <div className="relative overflow-hidden h-48 flex-shrink-0">
+                                            <div
+                                                className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
+                                                style={{ backgroundImage: `url(${event.image})` }}
+                                            />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
-                                        {/* Floating Badges */}
-                                        <div className="absolute top-4 left-4 flex flex-wrap gap-2 z-10">
-                                            <Badge className="bg-white/95 backdrop-blur-sm text-primary border-0 shadow-md rounded-full px-3">
-                                                {event.type}
-                                            </Badge>
-                                            {event.cmeCredits > 0 && (
-                                                <Badge className="bg-primary/95 text-white border-0 shadow-md backdrop-blur-sm rounded-full px-3">
-                                                    <Award className="h-3 w-3 mr-1" />
-                                                    {event.cmeCredits} CME
+                                            {/* Floating Badges */}
+                                            <div className="absolute top-4 left-4 flex flex-wrap gap-2 z-10">
+                                                <Badge className="bg-white/95 backdrop-blur-sm text-primary border-0 shadow-md rounded-full px-3">
+                                                    {event.type}
                                                 </Badge>
+                                                {(event.cmeCredits ?? 0) > 0 && (
+                                                    <Badge className="bg-primary/95 text-white border-0 shadow-md backdrop-blur-sm rounded-full px-3">
+                                                        <Award className="h-3 w-3 mr-1" />
+                                                        {event.cmeCredits} CME
+                                                    </Badge>
+                                                )}
+                                            </div>
+
+                                            {/* Urgency Badge */}
+                                            {slots.urgent && (
+                                                <div className="absolute top-4 right-4 z-10">
+                                                    <Badge className="bg-gradient-to-r from-orange-500 to-red-500 text-white border-0 shadow-md backdrop-blur-sm animate-pulse rounded-full px-3">
+                                                        {slots.text}
+                                                    </Badge>
+                                                </div>
                                             )}
-                                        </div>
 
-                                        {/* Urgency Badge */}
-                                        {slots.urgent && (
-                                            <div className="absolute top-4 right-4 z-10">
-                                                <Badge className="bg-gradient-to-r from-orange-500 to-red-500 text-white border-0 shadow-md backdrop-blur-sm animate-pulse rounded-full px-3">
-                                                    {slots.text}
-                                                </Badge>
-                                            </div>
-                                        )}
-
-                                        {/* Bottom Info Overlay */}
-                                        <div className="absolute bottom-0 left-0 right-0 p-5 z-10">
-                                            <div className="flex items-center gap-3 text-white/90 text-sm mb-2">
-                                                <span className="flex items-center gap-1.5">
-                                                    <Calendar className="h-3.5 w-3.5" />
-                                                    {event.date}
-                                                </span>
-                                                <span className="w-1 h-1 rounded-full bg-white/50" />
-                                                <span className="flex items-center gap-1.5">
-                                                    <MapPin className="h-3.5 w-3.5" />
-                                                    {event.location.split(",")[0]}
-                                                </span>
-                                            </div>
-                                            <h3 className="font-bold text-white leading-tight text-lg line-clamp-2">
-                                                {event.title}
-                                            </h3>
-                                        </div>
-                                    </div>
-
-                                    {/* Card Content */}
-                                    <div className="p-5 lg:p-6 flex-1 flex flex-col justify-between">
-                                        <p className="text-sm text-muted-foreground line-clamp-2">
-                                            {event.shortDescription}
-                                        </p>
-
-                                        {/* Price and CTA */}
-                                        <div className="flex items-center justify-between pt-4 border-t border-border/50 mt-auto">
-                                            <div>
-                                                {event.earlyBirdPrice && (
-                                                    <span className="text-sm text-muted-foreground line-through mr-2">
-                                                        ₹{event.price.toLocaleString()}
+                                            {/* Bottom Info Overlay */}
+                                            <div className="absolute bottom-0 left-0 right-0 p-5 z-10">
+                                                <div className="flex items-center gap-3 text-white/90 text-sm mb-2">
+                                                    <span className="flex items-center gap-1.5">
+                                                        <Calendar className="h-3.5 w-3.5" />
+                                                        {event.date}
                                                     </span>
-                                                )}
-                                                <span className="text-xl font-bold text-primary">
-                                                    ₹{(event.earlyBirdPrice || event.price).toLocaleString()}
-                                                </span>
-                                                {event.earlyBirdDeadline && (
-                                                    <p className="text-xs text-green-600 font-medium mt-0.5">
-                                                        Early bird available
-                                                    </p>
-                                                )}
+                                                    <span className="w-1 h-1 rounded-full bg-white/50" />
+                                                    <span className="flex items-center gap-1.5">
+                                                        <MapPin className="h-3.5 w-3.5" />
+                                                        {event.location.split(",")[0]}
+                                                    </span>
+                                                </div>
+                                                <h3 className="font-bold text-white leading-tight text-lg line-clamp-2">
+                                                    {event.title}
+                                                </h3>
                                             </div>
-                                            <Link href={`/events/${event.id}`}>
-                                                <Button
-                                                    size="sm"
-                                                    className={cn(
-                                                        "gap-2 transition-all duration-300 rounded-full px-5",
-                                                        isHovered
-                                                            ? "gradient-medical text-white shadow-lg"
-                                                            : "bg-primary/10 text-primary hover:bg-primary hover:text-white"
-                                                    )}
-                                                >
-                                                    View Details
-                                                    <ArrowRight className={cn(
-                                                        "h-4 w-4 transition-transform duration-300",
-                                                        isHovered && "translate-x-1"
-                                                    )} />
-                                                </Button>
-                                            </Link>
+                                        </div>
+
+                                        {/* Card Content */}
+                                        <div className="p-5 lg:p-6 flex-1 flex flex-col">
+                                            <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+                                                {event.shortDescription}
+                                            </p>
+
+                                            {/* Price Section */}
+                                            <div className="pt-3 border-t border-border/50 mt-auto">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div>
+                                                        {event.earlyBirdPrice && (
+                                                            <span className="text-sm text-muted-foreground line-through mr-2">
+                                                                ₹{event.price.toLocaleString()}
+                                                            </span>
+                                                        )}
+                                                        <span className="text-xl font-bold text-primary">
+                                                            ₹{(event.earlyBirdPrice || event.price).toLocaleString()}
+                                                        </span>
+                                                        {event.earlyBirdDeadline && (
+                                                            <p className="text-xs text-green-600 font-medium mt-0.5">
+                                                                Early bird available
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                                                        <Users className="h-4 w-4" />
+                                                        <span>{event.registrations}/{event.capacity}</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Action Buttons */}
+                                                <div className="flex gap-2">
+                                                    <Link href={`/events/${event.id}`} className="flex-1">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="w-full gap-2 rounded-full border-primary/30 hover:bg-primary/5 hover:border-primary"
+                                                        >
+                                                            <Eye className="h-4 w-4" />
+                                                            Details
+                                                        </Button>
+                                                    </Link>
+                                                    <Link href={`/events/${event.id}/register`} className="flex-1">
+                                                        <Button
+                                                            size="sm"
+                                                            className={cn(
+                                                                "w-full gap-2 transition-all duration-300 rounded-full",
+                                                                isHovered
+                                                                    ? "gradient-medical text-white shadow-lg"
+                                                                    : "bg-primary text-white hover:bg-primary/90"
+                                                            )}
+                                                        >
+                                                            Register
+                                                            <ArrowRight className={cn(
+                                                                "h-4 w-4 transition-transform duration-300",
+                                                                isHovered && "translate-x-1"
+                                                            )} />
+                                                        </Button>
+                                                    </Link>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
 
                     {/* View All CTA */}
                     <div
@@ -882,227 +896,302 @@ export default function PublicHomePage() {
 
                 {/* Bottom Curve */}
                 <svg className="absolute bottom-0 left-0 right-0 w-full" viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-                    <path d="M0 80L48 74.7C96 69 192 59 288 53.3C384 48 480 48 576 53.3C672 59 768 69 864 69.3C960 69 1056 59 1152 53.3C1248 48 1344 48 1392 48L1440 48V80H1392C1344 80 1248 80 1152 80C1056 80 960 80 864 80C768 80 672 80 576 80C480 80 384 80 288 80C192 80 96 80 48 80H0Z" fill="white"/>
+                    <path d="M0 80L48 74.7C96 69 192 59 288 53.3C384 48 480 48 576 53.3C672 59 768 69 864 69.3C960 69 1056 59 1152 53.3C1248 48 1344 48 1392 48L1440 48V80H1392C1344 80 1248 80 1152 80C1056 80 960 80 864 80C768 80 672 80 576 80C480 80 384 80 288 80C192 80 96 80 48 80H0Z" fill="white" />
                 </svg>
             </section>
 
-            {/* Sponsors Section - Marquee Redesign */}
-            <section className="py-20 lg:py-28 bg-white relative overflow-hidden">
-                {/* Background decoration */}
-                <div className="absolute inset-0 pointer-events-none">
-                    <div className="absolute w-[600px] h-[600px] rounded-full bg-gradient-to-br from-primary/5 to-transparent -top-80 -left-80" />
-                    <div className="absolute w-[400px] h-[400px] rounded-full bg-gradient-to-br from-teal-100/50 to-transparent -bottom-40 -right-40" />
-                </div>
-
+            {/* Sponsors Section - Tier-based Showcase */}
+            <section className="py-20 lg:py-28 bg-gradient-to-b from-white to-slate-50 relative overflow-hidden">
                 <div className="container mx-auto px-4 lg:px-8 relative z-10">
-                    <div
-                        data-scroll-reveal
-                        className="text-center mb-16"
-                    >
-                        <Badge variant="outline" className="mb-4 px-5 py-1.5 rounded-full">
-                            <Building2 className="h-3.5 w-3.5 mr-2" />
+                    {/* Section Header */}
+                    <div data-scroll-reveal className="text-center mb-16">
+                        <p className="text-primary font-semibold tracking-wider uppercase text-sm mb-3">
                             Our Partners
-                        </Badge>
-                        <h2 className="text-3xl lg:text-5xl font-bold tracking-tight mb-4">
-                            Trusted by Industry Leaders
-                        </h2>
-                        <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-                            We collaborate with leading healthcare organizations to bring you the best medical education
                         </p>
+                        <h2 className="text-3xl lg:text-4xl font-bold tracking-tight mb-4">
+                            Supported by Leading Organizations
+                        </h2>
+                        <div className="w-20 h-1 bg-gradient-to-r from-primary to-teal-400 mx-auto rounded-full" />
                     </div>
 
-                    {/* Marquee Container */}
-                    <div
-                        data-scroll-reveal
-                        data-scroll-delay="1"
-                        className="overflow-hidden py-4"
-                    >
-                        {/* First Row - Moving Right */}
-                        <div className="flex gap-6 animate-marquee mb-6">
-                            {[...sponsors, ...sponsors].map((sponsor, idx) => (
-                                <div
-                                    key={idx}
-                                    className={cn(
-                                        "flex-shrink-0 flex items-center justify-center p-5 rounded-2xl min-w-[220px] hover:shadow-xl hover:-translate-y-2 transition-all duration-300 border-2",
-                                        sponsor.tier === "platinum" && "bg-gradient-to-br from-slate-50 to-slate-100 border-slate-300 hover:border-slate-400",
-                                        sponsor.tier === "gold" && "bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-300 hover:border-amber-400",
-                                        sponsor.tier === "silver" && "bg-gradient-to-br from-gray-50 to-slate-50 border-gray-300 hover:border-gray-400"
-                                    )}
-                                >
-                                    <div className="flex flex-col items-center gap-3">
-                                        <div className={cn(
-                                            "w-14 h-14 rounded-xl flex items-center justify-center text-xl font-bold shadow-md",
-                                            sponsor.tier === "platinum" && "bg-gradient-to-br from-slate-600 to-slate-800 text-white",
-                                            sponsor.tier === "gold" && "bg-gradient-to-br from-amber-500 to-yellow-500 text-white",
-                                            sponsor.tier === "silver" && "bg-gradient-to-br from-gray-400 to-gray-500 text-white"
-                                        )}>
-                                            {sponsor.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
+                    {sponsors.length > 0 ? (
+                        <div className="space-y-12">
+                            {/* Platinum Sponsors */}
+                            {sponsors.filter(s => s.tier === "platinum").length > 0 && (
+                                <div data-scroll-reveal>
+                                    <div className="flex items-center justify-center gap-3 mb-8">
+                                        <div className="h-px flex-1 max-w-[100px] bg-gradient-to-r from-transparent to-slate-300" />
+                                        <div className="flex items-center gap-2 px-4 py-1.5 bg-slate-800 text-white rounded-full text-sm font-medium">
+                                            <Crown className="h-4 w-4" />
+                                            Platinum Partners
                                         </div>
-                                        <span className="text-sm font-semibold text-foreground text-center">
-                                            {sponsor.name}
-                                        </span>
-                                        <Badge
-                                            className={cn(
-                                                "text-xs capitalize rounded-full px-3 py-1 font-medium",
-                                                sponsor.tier === "platinum" && "bg-slate-700 text-white border-0",
-                                                sponsor.tier === "gold" && "bg-gradient-to-r from-amber-500 to-yellow-500 text-white border-0",
-                                                sponsor.tier === "silver" && "bg-gray-500 text-white border-0"
-                                            )}
-                                        >
-                                            {sponsor.tier === "platinum" && <Crown className="h-3 w-3 mr-1" />}
-                                            {sponsor.tier === "gold" && <Star className="h-3 w-3 mr-1" />}
-                                            {sponsor.tier === "silver" && <Medal className="h-3 w-3 mr-1" />}
-                                            {sponsor.tier}
-                                        </Badge>
+                                        <div className="h-px flex-1 max-w-[100px] bg-gradient-to-l from-transparent to-slate-300" />
+                                    </div>
+                                    <div className="flex flex-wrap justify-center gap-8">
+                                        {sponsors.filter(s => s.tier === "platinum").map((sponsor, idx) => (
+                                            <div
+                                                key={idx}
+                                                className="group relative bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-500 border border-slate-200 hover:border-slate-300 min-w-[200px]"
+                                            >
+                                                <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-white rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                <div className="relative flex flex-col items-center">
+                                                    {sponsor.logo ? (
+                                                        <Image
+                                                            src={sponsor.logo}
+                                                            alt={sponsor.name}
+                                                            width={120}
+                                                            height={60}
+                                                            className="h-16 w-auto object-contain grayscale group-hover:grayscale-0 transition-all duration-500"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-24 h-16 rounded-xl bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center text-white text-2xl font-bold shadow-lg group-hover:scale-105 transition-transform">
+                                                            {sponsor.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
+                                                        </div>
+                                                    )}
+                                                    <p className="mt-4 font-semibold text-foreground text-center">
+                                                        {sponsor.name}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
-                            ))}
-                        </div>
+                            )}
 
-                        {/* Second Row - Moving Left */}
-                        <div className="flex gap-6 animate-marquee-reverse">
-                            {[...sponsors.slice().reverse(), ...sponsors.slice().reverse()].map((sponsor, idx) => (
-                                <div
-                                    key={idx}
-                                    className={cn(
-                                        "flex-shrink-0 flex items-center justify-center p-5 rounded-2xl min-w-[220px] hover:shadow-xl hover:-translate-y-2 transition-all duration-300 border-2",
-                                        sponsor.tier === "platinum" && "bg-gradient-to-br from-slate-50 to-slate-100 border-slate-300 hover:border-slate-400",
-                                        sponsor.tier === "gold" && "bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-300 hover:border-amber-400",
-                                        sponsor.tier === "silver" && "bg-gradient-to-br from-gray-50 to-slate-50 border-gray-300 hover:border-gray-400"
-                                    )}
-                                >
-                                    <div className="flex flex-col items-center gap-3">
-                                        <div className={cn(
-                                            "w-14 h-14 rounded-xl flex items-center justify-center text-xl font-bold shadow-md",
-                                            sponsor.tier === "platinum" && "bg-gradient-to-br from-slate-600 to-slate-800 text-white",
-                                            sponsor.tier === "gold" && "bg-gradient-to-br from-amber-500 to-yellow-500 text-white",
-                                            sponsor.tier === "silver" && "bg-gradient-to-br from-gray-400 to-gray-500 text-white"
-                                        )}>
-                                            {sponsor.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
+                            {/* Gold Sponsors */}
+                            {sponsors.filter(s => s.tier === "gold").length > 0 && (
+                                <div data-scroll-reveal>
+                                    <div className="flex items-center justify-center gap-3 mb-8">
+                                        <div className="h-px flex-1 max-w-[100px] bg-gradient-to-r from-transparent to-amber-300" />
+                                        <div className="flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-full text-sm font-medium">
+                                            <Star className="h-4 w-4" />
+                                            Gold Partners
                                         </div>
-                                        <span className="text-sm font-semibold text-foreground text-center">
-                                            {sponsor.name}
-                                        </span>
-                                        <Badge
-                                            className={cn(
-                                                "text-xs capitalize rounded-full px-3 py-1 font-medium",
-                                                sponsor.tier === "platinum" && "bg-slate-700 text-white border-0",
-                                                sponsor.tier === "gold" && "bg-gradient-to-r from-amber-500 to-yellow-500 text-white border-0",
-                                                sponsor.tier === "silver" && "bg-gray-500 text-white border-0"
-                                            )}
-                                        >
-                                            {sponsor.tier === "platinum" && <Crown className="h-3 w-3 mr-1" />}
-                                            {sponsor.tier === "gold" && <Star className="h-3 w-3 mr-1" />}
-                                            {sponsor.tier === "silver" && <Medal className="h-3 w-3 mr-1" />}
-                                            {sponsor.tier}
-                                        </Badge>
+                                        <div className="h-px flex-1 max-w-[100px] bg-gradient-to-l from-transparent to-amber-300" />
+                                    </div>
+                                    <div className="flex flex-wrap justify-center gap-6">
+                                        {sponsors.filter(s => s.tier === "gold").map((sponsor, idx) => (
+                                            <div
+                                                key={idx}
+                                                className="group bg-white rounded-xl p-6 shadow-md hover:shadow-xl transition-all duration-300 border border-amber-100 hover:border-amber-200 min-w-[160px]"
+                                            >
+                                                <div className="flex flex-col items-center">
+                                                    {sponsor.logo ? (
+                                                        <Image
+                                                            src={sponsor.logo}
+                                                            alt={sponsor.name}
+                                                            width={100}
+                                                            height={50}
+                                                            className="h-12 w-auto object-contain grayscale group-hover:grayscale-0 transition-all duration-300"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-16 h-12 rounded-lg bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center text-white text-lg font-bold shadow group-hover:scale-105 transition-transform">
+                                                            {sponsor.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
+                                                        </div>
+                                                    )}
+                                                    <p className="mt-3 text-sm font-medium text-foreground text-center">
+                                                        {sponsor.name}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
-                            ))}
+                            )}
+
+                            {/* Silver Sponsors */}
+                            {sponsors.filter(s => s.tier === "silver").length > 0 && (
+                                <div data-scroll-reveal>
+                                    <div className="flex items-center justify-center gap-3 mb-8">
+                                        <div className="h-px flex-1 max-w-[100px] bg-gradient-to-r from-transparent to-gray-300" />
+                                        <div className="flex items-center gap-2 px-4 py-1.5 bg-gray-500 text-white rounded-full text-sm font-medium">
+                                            <Medal className="h-4 w-4" />
+                                            Silver Partners
+                                        </div>
+                                        <div className="h-px flex-1 max-w-[100px] bg-gradient-to-l from-transparent to-gray-300" />
+                                    </div>
+                                    <div className="flex flex-wrap justify-center gap-4">
+                                        {sponsors.filter(s => s.tier === "silver").map((sponsor, idx) => (
+                                            <div
+                                                key={idx}
+                                                className="group bg-white/80 backdrop-blur rounded-lg px-5 py-4 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 hover:border-gray-200"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    {sponsor.logo ? (
+                                                        <Image
+                                                            src={sponsor.logo}
+                                                            alt={sponsor.name}
+                                                            width={80}
+                                                            height={40}
+                                                            className="h-8 w-auto object-contain grayscale group-hover:grayscale-0 transition-all duration-300"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center text-white text-sm font-bold">
+                                                            {sponsor.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
+                                                        </div>
+                                                    )}
+                                                    <p className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+                                                        {sponsor.name}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    </div>
+                    ) : (
+                        <div className="text-center py-12">
+                            <Building2 className="h-12 w-12 mx-auto text-muted-foreground/30 mb-4" />
+                            <p className="text-muted-foreground">Partner information coming soon</p>
+                        </div>
+                    )}
 
                     {/* Become a Sponsor CTA */}
-                    <div
-                        data-scroll-reveal
-                        className="text-center mt-12"
-                    >
-                        <p className="text-muted-foreground mb-4">Interested in sponsoring our events?</p>
-                        <Button variant="outline" className="gap-2 rounded-full px-6">
-                            <Heart className="h-4 w-4" />
-                            Become a Sponsor
+                    <div data-scroll-reveal className="mt-16 text-center">
+                        <div className="inline-flex flex-col sm:flex-row items-center gap-4 p-6 bg-gradient-to-r from-primary/5 via-teal-50 to-primary/5 rounded-2xl border border-primary/10">
+                            <div className="text-center sm:text-left">
+                                <p className="font-semibold text-foreground">Become a Partner</p>
+                                <p className="text-sm text-muted-foreground">Join leading organizations in supporting medical education</p>
+                            </div>
+                            <Button className="gradient-medical text-white rounded-full px-6 shadow-lg hover:shadow-xl transition-all">
+                                <Heart className="h-4 w-4 mr-2" />
+                                Partner With Us
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* About Us Section - Timeline Design */}
+            <section id="about" className="py-20 lg:py-28 bg-slate-50 relative overflow-hidden">
+                <DecorativeBackground />
+
+                <div className="container mx-auto px-4 lg:px-8 relative z-10">
+                    {/* Section Header */}
+                    <div data-scroll-reveal className="text-center mb-16 lg:mb-20">
+                        <p className="text-primary font-semibold tracking-wider uppercase text-sm mb-3">
+                            About Us
+                        </p>
+                        <h2 className="text-3xl lg:text-4xl font-bold tracking-tight mb-4">
+                            Why Choose MedConf?
+                        </h2>
+                        <div className="w-20 h-1 bg-gradient-to-r from-primary to-teal-400 mx-auto rounded-full" />
+                    </div>
+
+                    {/* Timeline */}
+                    <div className="relative max-w-5xl mx-auto">
+                        {/* Central Line */}
+                        <div className="absolute left-4 lg:left-1/2 top-0 bottom-0 w-0.5 bg-gradient-to-b from-primary via-teal-400 to-primary/20 lg:-translate-x-1/2" />
+
+                        {/* Timeline Items */}
+                        {[
+                            {
+                                icon: Award,
+                                title: "CME Accredited Events",
+                                description: "All our conferences and workshops are accredited by recognized medical councils including MCI, State Medical Councils, and International Bodies. Earn verified CME credits that count towards your professional development.",
+                                color: "from-teal-500 to-cyan-500",
+                                year: "Quality"
+                            },
+                            {
+                                icon: Zap,
+                                title: "Seamless Registration",
+                                description: "Experience hassle-free registration with our OTP-based verification system. Secure payment gateway integration ensures your transactions are safe. Register in under 2 minutes!",
+                                color: "from-amber-500 to-orange-500",
+                                year: "Speed"
+                            },
+                            {
+                                icon: GraduationCap,
+                                title: "Instant Digital Certificates",
+                                description: "No more waiting for certificates! Download your CME certificates instantly after event completion. QR-verified certificates that are accepted nationwide for professional records.",
+                                color: "from-emerald-500 to-green-500",
+                                year: "Convenience"
+                            },
+                            {
+                                icon: Globe,
+                                title: "Hybrid Event Access",
+                                description: "Can't attend in person? Join virtually with our high-quality live streaming. Access recorded sessions, presentation materials, and interactive Q&A from anywhere in the world.",
+                                color: "from-violet-500 to-purple-500",
+                                year: "Flexibility"
+                            }
+                        ].map((item, idx) => (
+                            <div
+                                key={idx}
+                                className={cn(
+                                    "relative flex items-center mb-12 lg:mb-16 last:mb-0",
+                                    idx % 2 === 0 ? "lg:flex-row" : "lg:flex-row-reverse"
+                                )}
+                            >
+                                {/* Content Card */}
+                                <div className={cn(
+                                    "ml-12 lg:ml-0 lg:w-[calc(50%-40px)]",
+                                    idx % 2 === 0 ? "lg:pr-8 lg:text-right" : "lg:pl-8 lg:text-left"
+                                )}>
+                                    <div className="bg-white rounded-2xl p-6 lg:p-8 shadow-lg hover:shadow-xl transition-all duration-300 border border-border/50 group hover:-translate-y-1">
+                                        {/* Year/Label Badge */}
+                                        <div className={cn(
+                                            "inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold text-white mb-4",
+                                            `bg-gradient-to-r ${item.color}`
+                                        )}>
+                                            {item.year}
+                                        </div>
+
+                                        {/* Mobile Icon (shown only on mobile) */}
+                                        <div className={cn(
+                                            "lg:hidden w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-gradient-to-br text-white",
+                                            item.color
+                                        )}>
+                                            <item.icon className="h-6 w-6" />
+                                        </div>
+
+                                        <h3 className="text-xl font-bold mb-3 text-foreground">
+                                            {item.title}
+                                        </h3>
+                                        <p className="text-muted-foreground leading-relaxed">
+                                            {item.description}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Center Icon Node */}
+                                <div className="absolute left-0 lg:left-1/2 lg:-translate-x-1/2 flex items-center justify-center">
+                                    <div className="relative">
+                                        {/* Icon Container */}
+                                        <div className={cn(
+                                            "relative w-8 h-8 lg:w-14 lg:h-14 rounded-full flex items-center justify-center bg-gradient-to-br text-white shadow-lg ring-4 ring-white",
+                                            item.color
+                                        )}>
+                                            <item.icon className="h-4 w-4 lg:h-7 lg:w-7" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Empty Space for other side */}
+                                <div className="hidden lg:block lg:w-[calc(50%-40px)]" />
+                            </div>
+                        ))}
+
+                        {/* End Node */}
+                        <div className="absolute left-4 lg:left-1/2 bottom-0 lg:-translate-x-1/2 -mb-2">
+                            <div className="w-4 h-4 rounded-full bg-gradient-to-br from-primary to-teal-400 ring-4 ring-white shadow-lg" />
+                        </div>
+                    </div>
+
+                    {/* CTA */}
+                    <div data-scroll-reveal className="text-center mt-16">
+                        <Button
+                            size="lg"
+                            className="gradient-medical text-white rounded-full px-8 shadow-lg hover:shadow-xl transition-all"
+                        >
+                            <Calendar className="h-5 w-5 mr-2" />
+                            Explore Our Events
                         </Button>
                     </div>
                 </div>
 
                 {/* Bottom Curve */}
                 <svg className="absolute bottom-0 left-0 right-0 w-full" viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-                    <path d="M0 80L60 69.3C120 59 240 37 360 32C480 27 600 37 720 42.7C840 48 960 48 1080 42.7C1200 37 1320 27 1380 21.3L1440 16V80H1380C1320 80 1200 80 1080 80C960 80 840 80 720 80C600 80 480 80 360 80C240 80 120 80 60 80H0Z" fill="#f8fafc"/>
-                </svg>
-            </section>
-
-            {/* Features/About Section */}
-            <section id="about" className="py-20 lg:py-28 bg-slate-50 relative overflow-hidden">
-                <DecorativeBackground />
-
-                <div className="container mx-auto px-4 lg:px-8 relative z-10">
-                    <div
-                        data-scroll-reveal
-                        className="text-center mb-16"
-                    >
-                        <Badge variant="outline" className="mb-4 px-5 py-1.5 rounded-full">
-                            About Us
-                        </Badge>
-                        <h2 className="text-3xl lg:text-5xl font-bold tracking-tight mb-4">
-                            Why Choose MedConf?
-                        </h2>
-                        <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-                            A seamless platform for medical professionals to discover, register, and attend accredited conferences
-                        </p>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
-                        {[
-                            {
-                                icon: Award,
-                                title: "CME Accredited",
-                                description: "All events accredited by recognized medical councils",
-                                color: "from-teal-500 to-cyan-500",
-                                bg: "bg-teal-50"
-                            },
-                            {
-                                icon: Zap,
-                                title: "Easy Registration",
-                                description: "Quick OTP-based registration with secure payment",
-                                color: "from-amber-500 to-orange-500",
-                                bg: "bg-amber-50"
-                            },
-                            {
-                                icon: GraduationCap,
-                                title: "Digital Certificates",
-                                description: "Download CME certificates instantly after completion",
-                                color: "from-emerald-500 to-green-500",
-                                bg: "bg-emerald-50"
-                            },
-                            {
-                                icon: Globe,
-                                title: "Virtual Access",
-                                description: "Join events from anywhere with live streaming",
-                                color: "from-violet-500 to-purple-500",
-                                bg: "bg-violet-50"
-                            }
-                        ].map((feature, idx) => (
-                            <Card
-                                key={idx}
-                                data-scroll-reveal="scale"
-                                data-scroll-delay={String(idx + 1)}
-                                className="text-center card-hover border-0 shadow-lg bg-white group rounded-3xl overflow-hidden"
-                            >
-                                <CardContent className="pt-10 pb-8 px-6">
-                                    <div className={cn(
-                                        "w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5 transition-all duration-500 group-hover:scale-110 group-hover:shadow-lg",
-                                        feature.bg
-                                    )}>
-                                        <div className={cn(
-                                            "w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br text-white",
-                                            feature.color
-                                        )}>
-                                            <feature.icon className="h-6 w-6" />
-                                        </div>
-                                    </div>
-                                    <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
-                                    <p className="text-sm text-muted-foreground leading-relaxed">
-                                        {feature.description}
-                                    </p>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Bottom Curve */}
-                <svg className="absolute bottom-0 left-0 right-0 w-full" viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-                    <path d="M0 80L80 74.7C160 69 320 59 480 58.7C640 59 800 69 960 69.3C1120 69 1280 59 1360 53.3L1440 48V80H1360C1280 80 1120 80 960 80C800 80 640 80 480 80C320 80 160 80 80 80H0Z" fill="white"/>
+                    <path d="M0 80L80 74.7C160 69 320 59 480 58.7C640 59 800 69 960 69.3C1120 69 1280 59 1360 53.3L1440 48V80H1360C1280 80 1120 80 960 80C800 80 640 80 480 80C320 80 160 80 80 80H0Z" fill="white" />
                 </svg>
             </section>
 
@@ -1171,7 +1260,7 @@ export default function PublicHomePage() {
 
                 {/* Bottom Curve */}
                 <svg className="absolute bottom-0 left-0 right-0 w-full" viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-                    <path d="M0 80L48 69.3C96 59 192 37 288 32C384 27 480 37 576 48C672 59 768 69 864 69.3C960 69 1056 59 1152 48C1248 37 1344 27 1392 21.3L1440 16V80H1392C1344 80 1248 80 1152 80C1056 80 960 80 864 80C768 80 672 80 576 80C480 80 384 80 288 80C192 80 96 80 48 80H0Z" fill="#0f172a"/>
+                    <path d="M0 80L48 69.3C96 59 192 37 288 32C384 27 480 37 576 48C672 59 768 69 864 69.3C960 69 1056 59 1152 48C1248 37 1344 27 1392 21.3L1440 16V80H1392C1344 80 1248 80 1152 80C1056 80 960 80 864 80C768 80 672 80 576 80C480 80 384 80 288 80C192 80 96 80 48 80H0Z" fill="#0f172a" />
                 </svg>
             </section>
 

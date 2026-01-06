@@ -1,0 +1,108 @@
+import { z } from "zod";
+
+export const eventStatusEnum = z.enum([
+  "DRAFT",
+  "UPCOMING",
+  "ACTIVE",
+  "COMPLETED",
+  "CANCELLED",
+]);
+
+export const eventTypeEnum = z.enum([
+  "CONFERENCE",
+  "WORKSHOP",
+  "SEMINAR",
+  "WEBINAR",
+  "CME",
+  "SYMPOSIUM",
+]);
+
+export const createEventSchema = z.object({
+  title: z.string().min(3, "Title must be at least 3 characters"),
+  slug: z.string().optional(),
+  shortDescription: z.string().optional(),
+  description: z.string().optional(),
+
+  // Date & Time (optional for drafts, required for publishing)
+  startDate: z.string().or(z.date()).optional(),
+  endDate: z.string().or(z.date()).optional(),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
+  timezone: z.string().default("UTC"),
+
+  // Location
+  location: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  country: z.string().optional(),
+  mapLink: z.string().optional(),
+  isVirtual: z.boolean().default(false),
+  virtualLink: z.string().optional(),
+
+  // Capacity & Registration
+  capacity: z.number().int().positive().default(100),
+  registrationDeadline: z.string().or(z.date()).optional(),
+  isRegistrationOpen: z.boolean().default(true),
+
+  // Pricing
+  price: z.number().nonnegative().default(0),
+  earlyBirdPrice: z.number().nonnegative().optional(),
+  earlyBirdDeadline: z.string().or(z.date()).optional(),
+  currency: z.string().default("USD"),
+
+  // Status & Meta
+  status: eventStatusEnum.default("DRAFT"),
+  type: eventTypeEnum.default("CONFERENCE"),
+  category: z.string().optional(),
+  tags: z.array(z.string()).default([]),
+
+  // Additional Info
+  cmeCredits: z.number().int().nonnegative().optional(),
+  organizer: z.string().optional(),
+  contactEmail: z.string().optional().refine(
+    (val) => !val || val === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
+    { message: "Invalid email format" }
+  ),
+  contactPhone: z.string().optional(),
+  website: z.string().optional().refine(
+    (val) => !val || val === "" || /^https?:\/\/.+/.test(val),
+    { message: "Invalid URL format" }
+  ),
+  includes: z.array(z.string()).default([]), // What's included in the event
+
+  // Media
+  bannerImage: z.string().optional(),
+  thumbnailImage: z.string().optional(),
+
+  // Certificate Signatories
+  signatory1Name: z.string().optional(),
+  signatory1Title: z.string().optional(),
+  signatory2Name: z.string().optional(),
+  signatory2Title: z.string().optional(),
+
+  // Settings
+  isPublished: z.boolean().default(false),
+  isFeatured: z.boolean().default(false),
+});
+
+export const updateEventSchema = createEventSchema.partial();
+
+export const eventQuerySchema = z.object({
+  page: z.string().optional(),
+  limit: z.string().optional(),
+  status: eventStatusEnum.optional(),
+  type: eventTypeEnum.optional(),
+  search: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  isPublished: z.string().optional(),
+  isFeatured: z.string().optional(),
+  sortBy: z.string().optional(),
+  sortOrder: z.enum(["asc", "desc"]).optional(),
+});
+
+// Types
+export type CreateEventInput = z.infer<typeof createEventSchema>;
+export type UpdateEventInput = z.infer<typeof updateEventSchema>;
+export type EventQuery = z.infer<typeof eventQuerySchema>;

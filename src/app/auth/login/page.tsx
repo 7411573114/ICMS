@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -24,6 +25,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function AdminLoginPage() {
     const router = useRouter();
     const [isLoading, setIsLoading] = React.useState(false);
+    const [error, setError] = React.useState<string | null>(null);
 
     const {
         register,
@@ -40,10 +42,27 @@ export default function AdminLoginPage() {
 
     const onSubmit = async (data: LoginFormData) => {
         setIsLoading(true);
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        console.log("Login data:", data);
-        setIsLoading(false);
-        router.push("/dashboard");
+        setError(null);
+
+        try {
+            const result = await signIn("credentials", {
+                email: data.email,
+                password: data.password,
+                redirect: false,
+            });
+
+            if (result?.error) {
+                setError("Invalid email or password");
+                setIsLoading(false);
+                return;
+            }
+
+            router.push("/dashboard");
+            router.refresh();
+        } catch {
+            setError("An error occurred. Please try again.");
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -81,6 +100,12 @@ export default function AdminLoginPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="pt-4">
+                            {/* Error Message */}
+                            {error && (
+                                <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                                    {error}
+                                </div>
+                            )}
                             {/* Form */}
                             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                                 {/* Email Field */}
@@ -184,7 +209,7 @@ export default function AdminLoginPage() {
                                         <div className="space-y-1">
                                             <p className="text-xs text-muted-foreground">Password</p>
                                             <p className="text-sm font-mono font-medium text-foreground bg-background/60 px-2 py-1 rounded border border-border/50">
-                                                admin123
+                                                Admin@123
                                             </p>
                                         </div>
                                     </div>

@@ -1,0 +1,57 @@
+# Render Blueprint - ICMS (Integrated Conference Management System)
+# https://render.com/docs/blueprint-spec
+
+services:
+  # Next.js Web Service
+  - type: web
+    name: icms
+    runtime: node
+    plan: starter # Can be: free, starter, standard, pro
+    buildCommand: npm ci && npx prisma generate && npm run build
+    preDeployCommand: npx prisma migrate deploy
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: icms-db
+          property: connectionString
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: AUTH_URL
+        sync: false # Set manually after deployment
+      - key: APP_URL
+        sync: false # Set manually after deployment
+      - key: APP_NAME
+        value: ICMS
+      # SMTP Configuration (set in Render dashboard)
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      # Optional: Cloud Storage (set in Render dashboard if needed)
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_REGION
+        sync: false
+      - key: AWS_S3_BUCKET
+        sync: false
+    healthCheckPath: /api/health
+    autoDeploy: true
+
+databases:
+  # PostgreSQL Database
+  - name: icms-db
+    plan: starter # Can be: free, starter, standard, pro
+    databaseName: icms
+    user: icms_user
+    ipAllowList: [] # Allow connections from Render services only

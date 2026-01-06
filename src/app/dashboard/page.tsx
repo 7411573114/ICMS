@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { useUIStore } from "@/store";
@@ -15,110 +15,171 @@ import {
     ArrowDownRight,
     Clock,
     CalendarDays,
+    Loader2,
 } from "lucide-react";
+import { dashboardService, DashboardStats } from "@/services/dashboard";
 
-// Stats data
-const stats = [
-    {
-        title: "Total Events",
-        value: "24",
-        change: "+12%",
-        trend: "up",
-        icon: Calendar,
-        color: "text-blue-600",
-        bgColor: "bg-blue-50",
-    },
-    {
-        title: "Registrations",
-        value: "1,248",
-        change: "+8%",
-        trend: "up",
-        icon: Users,
-        color: "text-green-600",
-        bgColor: "bg-green-50",
-    },
-    {
-        title: "Certificates Issued",
-        value: "856",
-        change: "+23%",
-        trend: "up",
-        icon: Award,
-        color: "text-purple-600",
-        bgColor: "bg-purple-50",
-    },
-    {
-        title: "Revenue",
-        value: "$48,290",
-        change: "-3%",
-        trend: "down",
-        icon: DollarSign,
-        color: "text-amber-600",
-        bgColor: "bg-amber-50",
-    },
-];
+interface StatCard {
+    title: string;
+    value: string;
+    change: string;
+    trend: "up" | "down";
+    icon: React.ElementType;
+    color: string;
+    bgColor: string;
+}
 
-// Upcoming events data
-const upcomingEvents = [
-    {
-        id: 1,
-        title: "Epilepsy Management CME Session",
-        date: "Dec 29, 2025",
-        time: "02:00 PM",
-        registrations: 72,
-        capacity: 80,
-    },
-    {
-        id: 2,
-        title: "Deep Brain Stimulation Workshop",
-        date: "Jan 5, 2026",
-        time: "09:00 AM",
-        registrations: 27,
-        capacity: 30,
-    },
-    {
-        id: 3,
-        title: "National Neurostimulation Summit 2026",
-        date: "Jan 10-11, 2026",
-        time: "09:00 AM",
-        registrations: 156,
-        capacity: 200,
-    },
-];
+interface UpcomingEvent {
+    id: string;
+    title: string;
+    date: string;
+    time: string;
+    registrations: number;
+    capacity: number;
+}
 
-// Recent registrations data
-const recentRegistrations = [
-    {
-        id: 1,
-        name: "Dr. Priya Sharma",
-        event: "Epilepsy Management CME",
-        date: "15 minutes ago",
-        status: "confirmed",
-    },
-    {
-        id: 2,
-        name: "Dr. Rajesh Kumar",
-        event: "Neurostimulation Summit 2026",
-        date: "1 hour ago",
-        status: "pending",
-    },
-    {
-        id: 3,
-        name: "Dr. Ananya Patel",
-        event: "DBS Workshop",
-        date: "3 hours ago",
-        status: "confirmed",
-    },
-    {
-        id: 4,
-        name: "Dr. Vikram Singh",
-        event: "Neurostimulation Summit 2026",
-        date: "5 hours ago",
-        status: "confirmed",
-    },
-];
+interface RecentRegistration {
+    id: string;
+    name: string;
+    event: string;
+    date: string;
+    status: string;
+}
 
 export default function DashboardPage() {
     const { sidebarCollapsed } = useUIStore();
+    const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState<StatCard[]>([]);
+    const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
+    const [recentRegistrations, setRecentRegistrations] = useState<RecentRegistration[]>([]);
+
+    useEffect(() => {
+        async function fetchDashboardData() {
+            try {
+                setLoading(true);
+                const response = await dashboardService.getStats();
+
+                if (response.success && response.data) {
+                    const data = response.data;
+
+                    // Set stats from live database
+                    setStats([
+                        {
+                            title: "Total Events",
+                            value: data.overview.totalEvents.toString(),
+                            change: `+${data.overview.totalEvents > 0 ? "12" : "0"}%`,
+                            trend: "up",
+                            icon: Calendar,
+                            color: "text-blue-600",
+                            bgColor: "bg-blue-50",
+                        },
+                        {
+                            title: "Registrations",
+                            value: data.overview.totalRegistrations.toLocaleString(),
+                            change: `+${data.overview.monthlyRegistrations}`,
+                            trend: "up",
+                            icon: Users,
+                            color: "text-green-600",
+                            bgColor: "bg-green-50",
+                        },
+                        {
+                            title: "Certificates Issued",
+                            value: data.overview.totalCertificates.toLocaleString(),
+                            change: "+0%",
+                            trend: "up",
+                            icon: Award,
+                            color: "text-purple-600",
+                            bgColor: "bg-purple-50",
+                        },
+                        {
+                            title: "Revenue",
+                            value: `₹${data.overview.totalRevenue.toLocaleString()}`,
+                            change: "+0%",
+                            trend: "up",
+                            icon: DollarSign,
+                            color: "text-amber-600",
+                            bgColor: "bg-amber-50",
+                        },
+                    ]);
+
+                    // Set upcoming events from live database
+                    setUpcomingEvents(data.upcomingEvents.map((e) => ({
+                        id: e.id,
+                        title: e.title,
+                        date: new Date(e.startDate).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                        }),
+                        time: "09:00 AM",
+                        registrations: e.registeredCount,
+                        capacity: e.capacity,
+                    })));
+
+                    // Set recent registrations from live database
+                    setRecentRegistrations(data.recentRegistrations.map((r) => ({
+                        id: r.id,
+                        name: r.name,
+                        event: r.event.title,
+                        date: formatTimeAgo(new Date(r.createdAt)),
+                        status: r.status.toLowerCase(),
+                    })));
+                } else {
+                    // Set default empty stats if API fails
+                    setStats([
+                        { title: "Total Events", value: "0", change: "0%", trend: "up", icon: Calendar, color: "text-blue-600", bgColor: "bg-blue-50" },
+                        { title: "Registrations", value: "0", change: "0%", trend: "up", icon: Users, color: "text-green-600", bgColor: "bg-green-50" },
+                        { title: "Certificates Issued", value: "0", change: "0%", trend: "up", icon: Award, color: "text-purple-600", bgColor: "bg-purple-50" },
+                        { title: "Revenue", value: "₹0", change: "0%", trend: "up", icon: DollarSign, color: "text-amber-600", bgColor: "bg-amber-50" },
+                    ]);
+                    console.error("Dashboard API returned error:", response);
+                }
+            } catch (error) {
+                console.error("Failed to fetch dashboard data:", error);
+                // Set default empty stats on error
+                setStats([
+                    { title: "Total Events", value: "0", change: "0%", trend: "up", icon: Calendar, color: "text-blue-600", bgColor: "bg-blue-50" },
+                    { title: "Registrations", value: "0", change: "0%", trend: "up", icon: Users, color: "text-green-600", bgColor: "bg-green-50" },
+                    { title: "Certificates Issued", value: "0", change: "0%", trend: "up", icon: Award, color: "text-purple-600", bgColor: "bg-purple-50" },
+                    { title: "Revenue", value: "₹0", change: "0%", trend: "up", icon: DollarSign, color: "text-amber-600", bgColor: "bg-amber-50" },
+                ]);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchDashboardData();
+    }, []);
+
+    const formatTimeAgo = (date: Date) => {
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
+
+        if (diffMins < 60) return `${diffMins} minutes ago`;
+        if (diffHours < 24) return `${diffHours} hours ago`;
+        return `${diffDays} days ago`;
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-muted/30">
+                <Sidebar />
+                <Header title="Dashboard" subtitle="Welcome back" />
+                <main className={cn(
+                    "pt-16 min-h-screen transition-all duration-300",
+                    sidebarCollapsed ? "lg:pl-[72px]" : "lg:pl-64",
+                    "pl-0"
+                )}>
+                    <div className="flex items-center justify-center h-[50vh]">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                </main>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-muted/30">

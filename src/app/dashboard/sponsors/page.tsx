@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     Search,
     Plus,
-    Filter,
     MoreHorizontal,
     Globe,
     Mail,
@@ -12,18 +11,21 @@ import {
     Edit,
     Trash2,
     Eye,
+    RotateCcw,
     ExternalLink,
     Upload,
     Crown,
     Award,
     Medal,
     Star,
-    IndianRupee,
     Calendar,
     Link2,
+    Loader2,
+    X,
+    Phone,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,106 +48,32 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { sponsorsService, Sponsor } from "@/services/sponsors";
+import { useConfirmDialog, useAlertDialog } from "@/components/ui/confirm-dialog";
 
-const sponsors = [
-    {
-        id: 1,
-        name: "MedTech Solutions Pvt Ltd",
-        logo: null,
-        tier: "platinum",
-        contact: "Rahul Verma",
-        email: "rahul@medtech.in",
-        phone: "+91 98765 43210",
-        website: "https://www.medtech.in",
-        description: "Leading provider of neurostimulation devices and medical equipment in South Asia.",
-        events: ["CME Session 2025", "Annual Symposium 2025"],
-        amount: 500000,
-        startDate: "2024-01-01",
-        endDate: "2025-12-31",
-        isActive: true,
-        displayOnWebsite: true,
-    },
-    {
-        id: 2,
-        name: "NeuroDevices India",
-        logo: null,
-        tier: "gold",
-        contact: "Dr. Anita Sharma",
-        email: "anita@neurodevices.in",
-        phone: "+91 87654 32109",
-        website: "https://www.neurodevices.in",
-        description: "Specializing in advanced neural monitoring and diagnostic equipment.",
-        events: ["Workshop - Deep Brain Stimulation"],
-        amount: 250000,
-        startDate: "2024-06-01",
-        endDate: "2025-06-30",
-        isActive: true,
-        displayOnWebsite: true,
-    },
-    {
-        id: 3,
-        name: "Healthcare Partners Foundation",
-        logo: null,
-        tier: "gold",
-        contact: "Sanjay Gupta",
-        email: "sanjay@hcpf.org",
-        phone: "+91 76543 21098",
-        website: "https://www.hcpf.org",
-        description: "Non-profit organization supporting medical education and research.",
-        events: ["Research Conference 2025"],
-        amount: 250000,
-        startDate: "2024-01-01",
-        endDate: "2025-12-31",
-        isActive: true,
-        displayOnWebsite: true,
-    },
-    {
-        id: 4,
-        name: "PharmaCorp India",
-        logo: null,
-        tier: "silver",
-        contact: "Priya Menon",
-        email: "priya@pharmacorp.in",
-        phone: "+91 65432 10987",
-        website: "https://www.pharmacorp.in",
-        description: "Pharmaceutical company focused on neurological treatments.",
-        events: ["CME Session 2025"],
-        amount: 100000,
-        startDate: "2024-09-01",
-        endDate: "2025-08-31",
-        isActive: true,
-        displayOnWebsite: false,
-    },
-    {
-        id: 5,
-        name: "BioMed Research Labs",
-        logo: null,
-        tier: "silver",
-        contact: "Dr. Vijay Kumar",
-        email: "vijay@biomedlabs.com",
-        phone: "+91 54321 09876",
-        website: "https://www.biomedlabs.com",
-        description: "Research laboratory specializing in neural tissue engineering.",
-        events: ["Annual Symposium 2025"],
-        amount: 100000,
-        startDate: "2024-06-01",
-        endDate: "2025-05-31",
-        isActive: false,
-        displayOnWebsite: false,
-    },
-];
+// Display sponsor type
+interface DisplaySponsor {
+    id: string;
+    name: string;
+    logo: string | null;
+    email: string | null;
+    phone: string | null;
+    website: string | null;
+    description: string | null;
+    isActive: boolean;
+    eventCount: number;
+    events: {
+        id: string;
+        title: string;
+        tier: string;
+        startDate: string;
+    }[];
+}
 
 const tierConfig = {
-    platinum: {
+    PLATINUM: {
         label: "Platinum",
         icon: Crown,
         className: "tier-platinum",
@@ -154,7 +82,7 @@ const tierConfig = {
         borderClass: "border-slate-300",
         iconClass: "text-slate-600",
     },
-    gold: {
+    GOLD: {
         label: "Gold",
         icon: Award,
         className: "tier-gold",
@@ -163,7 +91,7 @@ const tierConfig = {
         borderClass: "border-yellow-300",
         iconClass: "text-yellow-600",
     },
-    silver: {
+    SILVER: {
         label: "Silver",
         icon: Medal,
         className: "tier-silver",
@@ -172,7 +100,7 @@ const tierConfig = {
         borderClass: "border-gray-300",
         iconClass: "text-gray-500",
     },
-    bronze: {
+    BRONZE: {
         label: "Bronze",
         icon: Star,
         className: "",
@@ -184,16 +112,164 @@ const tierConfig = {
 };
 
 export default function SponsorsPage() {
+    const [sponsors, setSponsors] = useState<DisplaySponsor[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState("");
     const [isCreateOpen, setIsCreateOpen] = useState(false);
-    const [selectedSponsor, setSelectedSponsor] = useState<typeof sponsors[0] | null>(null);
+    const [selectedSponsor, setSelectedSponsor] = useState<DisplaySponsor | null>(null);
     const [isViewOpen, setIsViewOpen] = useState(false);
     const [selectedTab, setSelectedTab] = useState("all");
 
+    const { confirm, ConfirmDialog } = useConfirmDialog();
+    const { alert, AlertDialog } = useAlertDialog();
+
+    // Fetch sponsors from API
+    useEffect(() => {
+        async function fetchSponsors() {
+            try {
+                setLoading(true);
+                const response = await sponsorsService.getAll();
+
+                if (response.success && response.data) {
+                    const sponsorsList = Array.isArray(response.data) ? response.data : [];
+                    const mappedSponsors: DisplaySponsor[] = sponsorsList.map((sponsor: Sponsor) => ({
+                        id: sponsor.id,
+                        name: sponsor.name,
+                        logo: sponsor.logo,
+                        email: sponsor.email,
+                        phone: sponsor.phone,
+                        website: sponsor.website,
+                        description: sponsor.description,
+                        isActive: sponsor.isActive,
+                        eventCount: sponsor._count?.eventSponsors || sponsor.eventSponsors?.length || 0,
+                        events: sponsor.eventSponsors?.map((es) => ({
+                            id: es.event.id,
+                            title: es.event.title,
+                            tier: es.tier,
+                            startDate: new Date(es.event.startDate).toLocaleDateString("en-IN", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                            }),
+                        })) || [],
+                    }));
+                    setSponsors(mappedSponsors);
+                }
+            } catch (error) {
+                console.error("Failed to fetch sponsors:", error);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchSponsors();
+    }, []);
+
+    // Get primary tier (highest tier from events)
+    const getPrimaryTier = (sponsor: DisplaySponsor): string => {
+        if (sponsor.events.length === 0) return "BRONZE";
+        const tierOrder = ["PLATINUM", "GOLD", "SILVER", "BRONZE"];
+        const tiers = sponsor.events.map((e) => e.tier);
+        for (const tier of tierOrder) {
+            if (tiers.includes(tier)) return tier;
+        }
+        return "BRONZE";
+    };
+
+    // Filter sponsors
     const filteredSponsors = sponsors.filter((sponsor) => {
-        if (selectedTab === "all") return true;
-        if (selectedTab === "active") return sponsor.isActive;
-        return sponsor.tier === selectedTab;
+        const matchesSearch = searchQuery === "" ||
+            sponsor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            sponsor.email?.toLowerCase().includes(searchQuery.toLowerCase());
+
+        if (selectedTab === "all") return matchesSearch;
+        if (selectedTab === "active") return matchesSearch && sponsor.isActive;
+        if (selectedTab === "with-events") return matchesSearch && sponsor.eventCount > 0;
+
+        // Filter by tier
+        const primaryTier = getPrimaryTier(sponsor);
+        return matchesSearch && primaryTier === selectedTab.toUpperCase();
     });
+
+    // Stats
+    const totalSponsors = sponsors.length;
+    const activeSponsors = sponsors.filter((s) => s.isActive).length;
+    const sponsorsWithEvents = sponsors.filter((s) => s.eventCount > 0).length;
+    const totalEventAssignments = sponsors.reduce((sum, s) => sum + s.eventCount, 0);
+
+    // Tier counts
+    const tierCounts = {
+        PLATINUM: sponsors.filter((s) => getPrimaryTier(s) === "PLATINUM").length,
+        GOLD: sponsors.filter((s) => getPrimaryTier(s) === "GOLD").length,
+        SILVER: sponsors.filter((s) => getPrimaryTier(s) === "SILVER").length,
+        BRONZE: sponsors.filter((s) => getPrimaryTier(s) === "BRONZE" || s.eventCount === 0).length,
+    };
+
+    // Delete sponsor handler (soft delete - set isActive = false)
+    const handleDeleteSponsor = async (sponsor: DisplaySponsor) => {
+        const confirmed = await confirm({
+            title: "Delete Sponsor",
+            description: `Are you sure you want to delete "${sponsor.name}"? They will be marked as inactive and won't appear in new event selections.`,
+            confirmText: "Delete",
+            cancelText: "Cancel",
+            variant: "danger",
+        });
+
+        if (!confirmed) return;
+
+        try {
+            const response = await sponsorsService.update(sponsor.id, { isActive: false });
+            if (response.success) {
+                setSponsors((prev) =>
+                    prev.map((s) => (s.id === sponsor.id ? { ...s, isActive: false } : s))
+                );
+            } else {
+                const errorMessage = typeof response.error === 'string'
+                    ? response.error
+                    : response.error?.message || "Failed to delete sponsor";
+                alert({
+                    title: "Delete Failed",
+                    description: errorMessage,
+                    variant: "error",
+                });
+            }
+        } catch (error) {
+            console.error("Failed to delete sponsor:", error);
+            alert({
+                title: "Delete Failed",
+                description: "An unexpected error occurred while deleting the sponsor.",
+                variant: "error",
+            });
+        }
+    };
+
+    // Restore sponsor handler (set isActive = true)
+    const handleRestoreSponsor = async (sponsor: DisplaySponsor) => {
+        try {
+            const response = await sponsorsService.update(sponsor.id, { isActive: true });
+            if (response.success) {
+                setSponsors((prev) =>
+                    prev.map((s) => (s.id === sponsor.id ? { ...s, isActive: true } : s))
+                );
+            } else {
+                const errorMessage = typeof response.error === 'string'
+                    ? response.error
+                    : response.error?.message || "Failed to restore sponsor";
+                alert({
+                    title: "Restore Failed",
+                    description: errorMessage,
+                    variant: "error",
+                });
+            }
+        } catch (error) {
+            console.error("Failed to restore sponsor:", error);
+            alert({
+                title: "Restore Failed",
+                description: "An unexpected error occurred while restoring the sponsor.",
+                variant: "error",
+            });
+        }
+    };
 
     const getTierBadge = (tier: string) => {
         const config = tierConfig[tier as keyof typeof tierConfig];
@@ -215,14 +291,24 @@ export default function SponsorsPage() {
         );
     };
 
-    const totalSponsorship = sponsors.reduce((sum, s) => sum + s.amount, 0);
-    const activeSponsors = sponsors.filter((s) => s.isActive).length;
+    // Loading state
+    if (loading) {
+        return (
+            <DashboardLayout title="Sponsors" subtitle="Manage event sponsors and partnerships">
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            </DashboardLayout>
+        );
+    }
 
     return (
         <DashboardLayout
             title="Sponsors"
             subtitle="Manage event sponsors and partnerships"
         >
+            <ConfirmDialog />
+            <AlertDialog />
             <div className="space-y-6 animate-fadeIn">
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
@@ -233,7 +319,7 @@ export default function SponsorsPage() {
                                     <Building2 className="h-5 w-5 sm:h-6 sm:w-6" />
                                 </div>
                                 <div>
-                                    <p className="text-xl sm:text-2xl font-bold">{sponsors.length}</p>
+                                    <p className="text-xl sm:text-2xl font-bold">{totalSponsors}</p>
                                     <p className="text-xs sm:text-sm text-muted-foreground">Total</p>
                                 </div>
                             </div>
@@ -256,13 +342,11 @@ export default function SponsorsPage() {
                         <CardContent className="p-3 sm:pt-6 sm:p-6">
                             <div className="flex items-center gap-2 sm:gap-4">
                                 <div className="icon-container icon-container-purple h-10 w-10 sm:h-12 sm:w-12">
-                                    <IndianRupee className="h-5 w-5 sm:h-6 sm:w-6" />
+                                    <Calendar className="h-5 w-5 sm:h-6 sm:w-6" />
                                 </div>
                                 <div>
-                                    <p className="text-xl sm:text-2xl font-bold">
-                                        {(totalSponsorship / 100000).toFixed(1)}L
-                                    </p>
-                                    <p className="text-xs sm:text-sm text-muted-foreground">Value</p>
+                                    <p className="text-xl sm:text-2xl font-bold">{sponsorsWithEvents}</p>
+                                    <p className="text-xs sm:text-sm text-muted-foreground">With Events</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -274,10 +358,8 @@ export default function SponsorsPage() {
                                     <Globe className="h-5 w-5 sm:h-6 sm:w-6" />
                                 </div>
                                 <div>
-                                    <p className="text-xl sm:text-2xl font-bold">
-                                        {sponsors.filter((s) => s.displayOnWebsite).length}
-                                    </p>
-                                    <p className="text-xs sm:text-sm text-muted-foreground">Website</p>
+                                    <p className="text-xl sm:text-2xl font-bold">{totalEventAssignments}</p>
+                                    <p className="text-xs sm:text-sm text-muted-foreground">Assignments</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -291,9 +373,9 @@ export default function SponsorsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                            {(["platinum", "gold", "silver", "bronze"] as const).map((tier) => {
+                            {(["PLATINUM", "GOLD", "SILVER", "BRONZE"] as const).map((tier) => {
                                 const config = tierConfig[tier];
-                                const count = sponsors.filter((s) => s.tier === tier).length;
+                                const count = tierCounts[tier];
                                 const TierIcon = config.icon;
                                 return (
                                     <div
@@ -301,9 +383,10 @@ export default function SponsorsPage() {
                                         className={cn(
                                             "p-3 sm:p-4 rounded-xl border-2 text-center transition-all hover:scale-105 cursor-pointer",
                                             config.bgClass,
-                                            config.borderClass
+                                            config.borderClass,
+                                            selectedTab === tier.toLowerCase() && "ring-2 ring-primary"
                                         )}
-                                        onClick={() => setSelectedTab(tier)}
+                                        onClick={() => setSelectedTab(tier.toLowerCase())}
                                     >
                                         <TierIcon className={cn("h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1 sm:mb-2", config.iconClass)} />
                                         <p className={cn("text-sm sm:text-base font-semibold", config.textClass)}>
@@ -323,11 +406,21 @@ export default function SponsorsPage() {
                     <div className="flex flex-1 gap-3">
                         <div className="relative flex-1 max-w-md">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <Input placeholder="Search sponsors..." className="pl-10" />
+                            <Input
+                                placeholder="Search sponsors..."
+                                className="pl-10 pr-10"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery("")}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            )}
                         </div>
-                        <Button variant="outline" size="icon">
-                            <Filter className="w-4 h-4" />
-                        </Button>
                     </div>
                     <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                         <DialogTrigger asChild>
@@ -362,49 +455,9 @@ export default function SponsorsPage() {
                                 <div className="section-divider-gradient my-2" />
 
                                 {/* Basic Info */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="col-span-2 space-y-2">
-                                        <Label htmlFor="name">Company/Organization Name *</Label>
-                                        <Input id="name" placeholder="MedTech Solutions Pvt Ltd" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="tier">Sponsorship Tier *</Label>
-                                        <Select>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select tier" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="platinum">
-                                                    <div className="flex items-center gap-2">
-                                                        <Crown className="h-4 w-4 text-slate-600" />
-                                                        Platinum
-                                                    </div>
-                                                </SelectItem>
-                                                <SelectItem value="gold">
-                                                    <div className="flex items-center gap-2">
-                                                        <Award className="h-4 w-4 text-yellow-600" />
-                                                        Gold
-                                                    </div>
-                                                </SelectItem>
-                                                <SelectItem value="silver">
-                                                    <div className="flex items-center gap-2">
-                                                        <Medal className="h-4 w-4 text-gray-500" />
-                                                        Silver
-                                                    </div>
-                                                </SelectItem>
-                                                <SelectItem value="bronze">
-                                                    <div className="flex items-center gap-2">
-                                                        <Star className="h-4 w-4 text-orange-600" />
-                                                        Bronze
-                                                    </div>
-                                                </SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="amount">Sponsorship Amount (₹)</Label>
-                                        <Input id="amount" type="number" placeholder="500000" />
-                                    </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="name">Company/Organization Name *</Label>
+                                    <Input id="name" placeholder="MedTech Solutions Pvt Ltd" />
                                 </div>
 
                                 <div className="section-divider-gradient my-2" />
@@ -412,34 +465,16 @@ export default function SponsorsPage() {
                                 {/* Contact Info */}
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="contact">Contact Person *</Label>
-                                        <Input id="contact" placeholder="Rahul Verma" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="email">Email *</Label>
-                                        <Input id="email" type="email" placeholder="rahul@company.com" />
+                                        <Label htmlFor="email">Email</Label>
+                                        <Input id="email" type="email" placeholder="contact@company.com" />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="phone">Phone</Label>
                                         <Input id="phone" type="tel" placeholder="+91 98765 43210" />
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="col-span-2 space-y-2">
                                         <Label htmlFor="website">Website</Label>
                                         <Input id="website" placeholder="https://www.company.com" />
-                                    </div>
-                                </div>
-
-                                <div className="section-divider-gradient my-2" />
-
-                                {/* Duration */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="startDate">Partnership Start</Label>
-                                        <Input id="startDate" type="date" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="endDate">Partnership End</Label>
-                                        <Input id="endDate" type="date" />
                                     </div>
                                 </div>
 
@@ -448,47 +483,20 @@ export default function SponsorsPage() {
                                     <Label htmlFor="description">About the Sponsor</Label>
                                     <Textarea
                                         id="description"
-                                        placeholder="Brief description about the company and their involvement..."
+                                        placeholder="Brief description about the company..."
                                         rows={3}
                                     />
                                 </div>
 
-                                {/* Events */}
-                                <div className="space-y-2">
-                                    <Label>Associated Events</Label>
-                                    <Select>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select events" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="cme2025">CME Session 2025</SelectItem>
-                                            <SelectItem value="symposium2025">Annual Symposium 2025</SelectItem>
-                                            <SelectItem value="workshop">Workshop - Deep Brain Stimulation</SelectItem>
-                                            <SelectItem value="research">Research Conference 2025</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {/* Display Settings */}
-                                <div className="space-y-3 p-4 rounded-lg bg-muted/50">
-                                    <div className="flex items-center justify-between">
-                                        <div className="space-y-0.5">
-                                            <Label>Active Partnership</Label>
-                                            <p className="text-xs text-muted-foreground">
-                                                Mark this partnership as currently active
-                                            </p>
-                                        </div>
-                                        <Switch defaultChecked />
+                                {/* Active Status */}
+                                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                                    <div className="space-y-0.5">
+                                        <Label>Active Sponsor</Label>
+                                        <p className="text-xs text-muted-foreground">
+                                            Active sponsors can be assigned to events
+                                        </p>
                                     </div>
-                                    <div className="flex items-center justify-between">
-                                        <div className="space-y-0.5">
-                                            <Label>Display on Website</Label>
-                                            <p className="text-xs text-muted-foreground">
-                                                Show this sponsor on event pages
-                                            </p>
-                                        </div>
-                                        <Switch defaultChecked />
-                                    </div>
+                                    <Switch defaultChecked />
                                 </div>
                             </div>
                             <DialogFooter>
@@ -508,66 +516,78 @@ export default function SponsorsPage() {
                             <>
                                 <DialogHeader>
                                     <div className="flex items-start gap-4">
-                                        <div className="h-16 w-16 rounded-lg bg-muted flex items-center justify-center">
-                                            <Building2 className="h-8 w-8 text-muted-foreground" />
+                                        <div className="h-16 w-16 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
+                                            {selectedSponsor.logo ? (
+                                                <img src={selectedSponsor.logo} alt={selectedSponsor.name} className="w-full h-full object-contain" />
+                                            ) : (
+                                                <Building2 className="h-8 w-8 text-muted-foreground" />
+                                            )}
                                         </div>
                                         <div className="flex-1">
                                             <div className="flex items-start justify-between">
                                                 <DialogTitle className="text-xl">
                                                     {selectedSponsor.name}
                                                 </DialogTitle>
-                                                {getTierBadge(selectedSponsor.tier)}
+                                                {getTierBadge(getPrimaryTier(selectedSponsor))}
                                             </div>
-                                            <DialogDescription className="mt-2">
-                                                {selectedSponsor.description}
-                                            </DialogDescription>
+                                            {selectedSponsor.description && (
+                                                <DialogDescription className="mt-2">
+                                                    {selectedSponsor.description}
+                                                </DialogDescription>
+                                            )}
+                                            <div className="flex gap-2 mt-3">
+                                                <Badge variant={selectedSponsor.isActive ? "default" : "secondary"}>
+                                                    {selectedSponsor.isActive ? "Active" : "Inactive"}
+                                                </Badge>
+                                                <Badge variant="outline">
+                                                    {selectedSponsor.eventCount} Event{selectedSponsor.eventCount !== 1 ? "s" : ""}
+                                                </Badge>
+                                            </div>
                                         </div>
                                     </div>
                                 </DialogHeader>
                                 <div className="space-y-4 mt-4">
                                     <div className="section-divider-gradient" />
 
-                                    {/* Sponsorship Details */}
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="p-4 rounded-lg bg-muted/50">
-                                            <p className="text-xs text-muted-foreground mb-1">
-                                                Sponsorship Value
-                                            </p>
-                                            <p className="text-xl font-bold text-primary">
-                                                ₹{selectedSponsor.amount.toLocaleString()}
-                                            </p>
+                                    {/* Event Sponsorships */}
+                                    {selectedSponsor.events.length > 0 && (
+                                        <div>
+                                            <h4 className="font-semibold mb-3">Sponsored Events</h4>
+                                            <div className="space-y-2">
+                                                {selectedSponsor.events.map((event) => (
+                                                    <div key={event.id} className="p-3 rounded-lg bg-muted/50 flex items-center justify-between">
+                                                        <div>
+                                                            <p className="font-medium text-sm">{event.title}</p>
+                                                            <p className="text-xs text-muted-foreground">{event.startDate}</p>
+                                                        </div>
+                                                        {getTierBadge(event.tier)}
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
-                                        <div className="p-4 rounded-lg bg-muted/50">
-                                            <p className="text-xs text-muted-foreground mb-1">
-                                                Partnership Period
-                                            </p>
-                                            <p className="text-sm font-medium">
-                                                {selectedSponsor.startDate} to {selectedSponsor.endDate}
-                                            </p>
-                                        </div>
-                                    </div>
+                                    )}
 
                                     {/* Contact */}
                                     <div>
                                         <h4 className="font-semibold mb-3">Contact Information</h4>
                                         <div className="space-y-2 text-sm">
-                                            <p>
-                                                <span className="text-muted-foreground">Contact:</span>{" "}
-                                                <span className="font-medium">{selectedSponsor.contact}</span>
-                                            </p>
-                                            <p className="flex items-center gap-2">
-                                                <Mail className="h-4 w-4 text-muted-foreground" />
-                                                <a
-                                                    href={`mailto:${selectedSponsor.email}`}
-                                                    className="text-primary hover:underline"
-                                                >
-                                                    {selectedSponsor.email}
-                                                </a>
-                                            </p>
+                                            {selectedSponsor.email && (
+                                                <p className="flex items-center gap-2">
+                                                    <Mail className="h-4 w-4 text-muted-foreground" />
+                                                    <a
+                                                        href={`mailto:${selectedSponsor.email}`}
+                                                        className="text-primary hover:underline"
+                                                    >
+                                                        {selectedSponsor.email}
+                                                    </a>
+                                                </p>
+                                            )}
                                             {selectedSponsor.phone && (
                                                 <p className="flex items-center gap-2">
-                                                    <span className="text-muted-foreground">Phone:</span>
-                                                    {selectedSponsor.phone}
+                                                    <Phone className="h-4 w-4 text-muted-foreground" />
+                                                    <a href={`tel:${selectedSponsor.phone}`}>
+                                                        {selectedSponsor.phone}
+                                                    </a>
                                                 </p>
                                             )}
                                             {selectedSponsor.website && (
@@ -585,31 +605,6 @@ export default function SponsorsPage() {
                                                 </p>
                                             )}
                                         </div>
-                                    </div>
-
-                                    {/* Associated Events */}
-                                    <div>
-                                        <h4 className="font-semibold mb-3">Sponsored Events</h4>
-                                        <div className="flex flex-wrap gap-2">
-                                            {selectedSponsor.events.map((event, index) => (
-                                                <Badge key={index} variant="secondary" className="gap-1">
-                                                    <Calendar className="h-3 w-3" />
-                                                    {event}
-                                                </Badge>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Status */}
-                                    <div className="flex gap-2">
-                                        {selectedSponsor.isActive ? (
-                                            <Badge className="status-active border-0">Active</Badge>
-                                        ) : (
-                                            <Badge variant="outline">Inactive</Badge>
-                                        )}
-                                        {selectedSponsor.displayOnWebsite && (
-                                            <Badge className="status-upcoming border-0">On Website</Badge>
-                                        )}
                                     </div>
                                 </div>
                                 <DialogFooter className="mt-4">
@@ -629,19 +624,13 @@ export default function SponsorsPage() {
                         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
                             <TabsList className="w-full sm:w-auto h-auto flex-wrap sm:flex-nowrap gap-1 p-1">
                                 <TabsTrigger value="all" className="flex-1 sm:flex-none text-xs sm:text-sm px-2 sm:px-3 py-1.5">
-                                    All
-                                </TabsTrigger>
-                                <TabsTrigger value="platinum" className="flex-1 sm:flex-none text-xs sm:text-sm px-2 sm:px-3 py-1.5">
-                                    Platinum
-                                </TabsTrigger>
-                                <TabsTrigger value="gold" className="flex-1 sm:flex-none text-xs sm:text-sm px-2 sm:px-3 py-1.5">
-                                    Gold
-                                </TabsTrigger>
-                                <TabsTrigger value="silver" className="flex-1 sm:flex-none text-xs sm:text-sm px-2 sm:px-3 py-1.5">
-                                    Silver
+                                    All ({totalSponsors})
                                 </TabsTrigger>
                                 <TabsTrigger value="active" className="flex-1 sm:flex-none text-xs sm:text-sm px-2 sm:px-3 py-1.5">
-                                    Active
+                                    Active ({activeSponsors})
+                                </TabsTrigger>
+                                <TabsTrigger value="with-events" className="flex-1 sm:flex-none text-xs sm:text-sm px-2 sm:px-3 py-1.5">
+                                    With Events ({sponsorsWithEvents})
                                 </TabsTrigger>
                             </TabsList>
                         </Tabs>
@@ -649,32 +638,37 @@ export default function SponsorsPage() {
                     <CardContent>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {filteredSponsors.map((sponsor, index) => {
-                                const config = tierConfig[sponsor.tier as keyof typeof tierConfig];
+                                const primaryTier = getPrimaryTier(sponsor);
+                                const config = tierConfig[primaryTier as keyof typeof tierConfig];
                                 return (
                                     <div
                                         key={sponsor.id}
                                         className={cn(
                                             "p-4 rounded-xl border-2 bg-card card-hover animate-fadeIn",
-                                            config?.borderClass || "border-border"
+                                            sponsor.eventCount > 0 ? config?.borderClass : "border-border"
                                         )}
                                         style={{ animationDelay: `${index * 0.05}s` }}
                                     >
                                         <div className="flex items-start justify-between mb-3">
                                             <div className="flex items-center gap-3">
                                                 <div className={cn(
-                                                    "w-12 h-12 rounded-lg flex items-center justify-center",
-                                                    config?.bgClass || "bg-muted"
+                                                    "w-12 h-12 rounded-lg flex items-center justify-center overflow-hidden",
+                                                    sponsor.eventCount > 0 ? config?.bgClass : "bg-muted"
                                                 )}>
-                                                    <Building2 className={cn(
-                                                        "w-6 h-6",
-                                                        config?.iconClass || "text-muted-foreground"
-                                                    )} />
+                                                    {sponsor.logo ? (
+                                                        <img src={sponsor.logo} alt={sponsor.name} className="w-full h-full object-contain" />
+                                                    ) : (
+                                                        <Building2 className={cn(
+                                                            "w-6 h-6",
+                                                            sponsor.eventCount > 0 ? config?.iconClass : "text-muted-foreground"
+                                                        )} />
+                                                    )}
                                                 </div>
                                                 <div>
                                                     <h3 className="font-semibold text-foreground line-clamp-1">
                                                         {sponsor.name}
                                                     </h3>
-                                                    {getTierBadge(sponsor.tier)}
+                                                    {sponsor.eventCount > 0 && getTierBadge(primaryTier)}
                                                 </div>
                                             </div>
                                             <DropdownMenu>
@@ -697,50 +691,64 @@ export default function SponsorsPage() {
                                                         <Edit className="mr-2 h-4 w-4" />
                                                         Edit
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem>
-                                                        <Link2 className="mr-2 h-4 w-4" />
-                                                        Visit Website
-                                                    </DropdownMenuItem>
+                                                    {sponsor.website && (
+                                                        <DropdownMenuItem asChild>
+                                                            <a href={sponsor.website} target="_blank" rel="noopener noreferrer">
+                                                                <Link2 className="mr-2 h-4 w-4" />
+                                                                Visit Website
+                                                            </a>
+                                                        </DropdownMenuItem>
+                                                    )}
                                                     <DropdownMenuSeparator />
-                                                    <DropdownMenuItem className="text-destructive">
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Delete
-                                                    </DropdownMenuItem>
+                                                    {sponsor.isActive ? (
+                                                        <DropdownMenuItem
+                                                            className="text-destructive"
+                                                            onClick={() => handleDeleteSponsor(sponsor)}
+                                                        >
+                                                            <Trash2 className="mr-2 h-4 w-4" />
+                                                            Delete
+                                                        </DropdownMenuItem>
+                                                    ) : (
+                                                        <DropdownMenuItem
+                                                            onClick={() => handleRestoreSponsor(sponsor)}
+                                                        >
+                                                            <RotateCcw className="mr-2 h-4 w-4" />
+                                                            Restore
+                                                        </DropdownMenuItem>
+                                                    )}
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </div>
 
-                                        <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                                            {sponsor.description}
-                                        </p>
+                                        {sponsor.description && (
+                                            <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                                                {sponsor.description}
+                                            </p>
+                                        )}
 
                                         <div className="space-y-1 text-sm text-muted-foreground mb-3">
-                                            <div className="flex items-center gap-2">
-                                                <Mail className="w-3 h-3" />
-                                                <span className="truncate">{sponsor.email}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Globe className="w-3 h-3" />
-                                                <span className="truncate">
-                                                    {sponsor.website?.replace("https://", "")}
-                                                </span>
-                                            </div>
+                                            {sponsor.email && (
+                                                <div className="flex items-center gap-2">
+                                                    <Mail className="w-3 h-3" />
+                                                    <span className="truncate">{sponsor.email}</span>
+                                                </div>
+                                            )}
+                                            {sponsor.website && (
+                                                <div className="flex items-center gap-2">
+                                                    <Globe className="w-3 h-3" />
+                                                    <span className="truncate">
+                                                        {sponsor.website.replace("https://", "").replace("http://", "")}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="flex items-center justify-between pt-3 border-t border-border">
-                                            <div className="flex items-center gap-2">
-                                                {sponsor.isActive ? (
-                                                    <Badge variant="outline" className="status-active border-0 text-xs">
-                                                        Active
-                                                    </Badge>
-                                                ) : (
-                                                    <Badge variant="outline" className="text-xs">
-                                                        Inactive
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                            <span className="text-sm font-semibold text-foreground">
-                                                ₹{(sponsor.amount / 100000).toFixed(1)}L
+                                            <Badge variant={sponsor.isActive ? "default" : "secondary"} className="text-xs">
+                                                {sponsor.isActive ? "Active" : "Inactive"}
+                                            </Badge>
+                                            <span className="text-xs text-muted-foreground">
+                                                {sponsor.eventCount} event{sponsor.eventCount !== 1 ? "s" : ""}
                                             </span>
                                         </div>
                                     </div>
@@ -753,11 +761,11 @@ export default function SponsorsPage() {
                                 <Building2 className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
                                 <h3 className="text-lg font-medium mb-2">No sponsors found</h3>
                                 <p className="text-sm text-muted-foreground mb-4">
-                                    {selectedTab === "all"
+                                    {sponsors.length === 0
                                         ? "Add your first sponsor to get started"
-                                        : "No sponsors match this filter"}
+                                        : "No sponsors match your search"}
                                 </p>
-                                {selectedTab === "all" && (
+                                {sponsors.length === 0 && (
                                     <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
                                         <Plus className="h-4 w-4" />
                                         Add Sponsor

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
     Calendar,
@@ -20,6 +20,8 @@ import {
     Zap,
     Globe,
     Star,
+    Loader2,
+    Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,202 +34,32 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { getEventImage } from "@/lib/event-utils";
+import { EVENT_TYPES, PUBLIC_STATUS_OPTIONS } from "@/lib/event-constants";
+import { eventsService, Event } from "@/services/events";
 
-const events = [
-    {
-        id: 1,
-        title: "National Neurostimulation Summit 2026",
-        shortDescription: "Join 200+ leading neurologists and neurosurgeons for India's premier neurostimulation conference featuring live surgical demonstrations and panel discussions.",
-        date: "Jan 10-11, 2026",
-        time: "09:00 AM - 05:00 PM",
-        location: "Grand Conference Hall, AIIMS, New Delhi",
-        type: "Conference",
-        registrations: 156,
-        capacity: 200,
-        status: "upcoming",
-        price: 6500,
-        earlyBirdPrice: 5000,
-        earlyBirdDeadline: "Dec 31, 2025",
-        cmeCredits: 16,
-        image: null,
-        featured: true,
-        sponsors: [
-            { name: "Medtronic India", tier: "platinum", logo: null },
-            { name: "Boston Scientific", tier: "gold", logo: null },
-            { name: "Abbott Neuromodulation", tier: "gold", logo: null },
-            { name: "Stryker India", tier: "silver", logo: null },
-        ],
-        speakers: 12,
-        sessions: 16,
-    },
-    {
-        id: 2,
-        title: "Deep Brain Stimulation Hands-on Workshop",
-        shortDescription: "Intensive hands-on workshop on DBS programming, troubleshooting, and patient management with cadaveric demonstrations.",
-        date: "Jan 5, 2026",
-        time: "09:00 AM - 05:00 PM",
-        location: "Simulation Lab, CMC Vellore",
-        type: "Workshop",
-        registrations: 27,
-        capacity: 30,
-        status: "upcoming",
-        price: 4500,
-        earlyBirdPrice: 3800,
-        earlyBirdDeadline: "Dec 30, 2025",
-        cmeCredits: 8,
-        image: null,
-        featured: false,
-        sponsors: [
-            { name: "Medtronic India", tier: "gold", logo: null },
-            { name: "BioMed Instruments", tier: "silver", logo: null },
-        ],
-        speakers: 5,
-        sessions: 6,
-    },
-    {
-        id: 3,
-        title: "Epilepsy Management CME Session",
-        shortDescription: "Comprehensive CME covering latest advances in epilepsy diagnosis, medical management, and surgical interventions.",
-        date: "Dec 29, 2025",
-        time: "02:00 PM - 06:00 PM",
-        location: "Conference Room A, NIMHANS, Bangalore",
-        type: "CME Session",
-        registrations: 72,
-        capacity: 80,
-        status: "upcoming",
-        price: 1500,
-        earlyBirdPrice: null,
-        earlyBirdDeadline: null,
-        cmeCredits: 4,
-        image: null,
-        featured: false,
-        sponsors: [
-            { name: "Sun Pharma", tier: "gold", logo: null },
-            { name: "Cipla Neurosciences", tier: "silver", logo: null },
-        ],
-        speakers: 4,
-        sessions: 4,
-    },
-    {
-        id: 4,
-        title: "Neural Engineering Research Symposium",
-        shortDescription: "Presenting cutting-edge research in brain-computer interfaces, neuroprosthetics, and computational neuroscience.",
-        date: "Jan 18, 2026",
-        time: "09:00 AM - 06:00 PM",
-        location: "Virtual Event (Zoom)",
-        type: "Symposium",
-        registrations: 89,
-        capacity: 200,
-        status: "upcoming",
-        price: 2000,
-        earlyBirdPrice: 1500,
-        earlyBirdDeadline: "Jan 10, 2026",
-        cmeCredits: 8,
-        image: null,
-        featured: false,
-        sponsors: [
-            { name: "IIT Delhi", tier: "platinum", logo: null },
-            { name: "DBT India", tier: "gold", logo: null },
-        ],
-        speakers: 15,
-        sessions: 10,
-    },
-    {
-        id: 5,
-        title: "Spinal Cord Stimulation Masterclass",
-        shortDescription: "Advanced masterclass on SCS implantation techniques, patient selection, and outcome optimization strategies.",
-        date: "Jan 25, 2026",
-        time: "10:00 AM - 04:00 PM",
-        location: "Training Center, Apollo Hospital, Chennai",
-        type: "Workshop",
-        registrations: 18,
-        capacity: 25,
-        status: "upcoming",
-        price: 5500,
-        earlyBirdPrice: 4800,
-        earlyBirdDeadline: "Jan 15, 2026",
-        cmeCredits: 6,
-        image: null,
-        featured: false,
-        sponsors: [
-            { name: "Boston Scientific", tier: "gold", logo: null },
-            { name: "Nevro Corp", tier: "silver", logo: null },
-        ],
-        speakers: 3,
-        sessions: 5,
-    },
-    {
-        id: 6,
-        title: "Movement Disorders Update 2025",
-        shortDescription: "Annual update on Parkinson's disease, dystonia, and essential tremor management with focus on device-aided therapies.",
-        date: "Dec 15, 2025",
-        time: "09:00 AM - 01:00 PM",
-        location: "Auditorium, KEM Hospital, Mumbai",
-        type: "Seminar",
-        registrations: 65,
-        capacity: 65,
-        status: "completed",
-        price: 1200,
-        earlyBirdPrice: null,
-        earlyBirdDeadline: null,
-        cmeCredits: 4,
-        image: null,
-        featured: false,
-        sponsors: [
-            { name: "Abbott India", tier: "gold", logo: null },
-        ],
-        speakers: 4,
-        sessions: 4,
-    },
-    {
-        id: 7,
-        title: "Interventional Pain Management Conference",
-        shortDescription: "Multi-disciplinary conference on advanced interventional techniques for chronic pain including neuromodulation approaches.",
-        date: "Dec 7-8, 2025",
-        time: "09:00 AM - 05:00 PM",
-        location: "Hotel Taj Palace, New Delhi",
-        type: "Conference",
-        registrations: 180,
-        capacity: 180,
-        status: "completed",
-        price: 5000,
-        earlyBirdPrice: null,
-        earlyBirdDeadline: null,
-        cmeCredits: 12,
-        image: null,
-        featured: false,
-        sponsors: [
-            { name: "Medtronic India", tier: "platinum", logo: null },
-            { name: "St. Jude Medical", tier: "gold", logo: null },
-            { name: "Bioness Inc", tier: "silver", logo: null },
-        ],
-        speakers: 10,
-        sessions: 14,
-    },
-    {
-        id: 8,
-        title: "Pediatric Neurology CME Workshop",
-        shortDescription: "Focused workshop on pediatric epilepsy surgery evaluation and vagus nerve stimulation in children.",
-        date: "Nov 22, 2025",
-        time: "10:00 AM - 03:00 PM",
-        location: "PGIMER, Chandigarh",
-        type: "Workshop",
-        registrations: 35,
-        capacity: 35,
-        status: "completed",
-        price: 2500,
-        earlyBirdPrice: null,
-        earlyBirdDeadline: null,
-        cmeCredits: 5,
-        image: null,
-        featured: false,
-        sponsors: [
-            { name: "LivaNova", tier: "gold", logo: null },
-        ],
-        speakers: 6,
-        sessions: 5,
-    },
-];
+// Display event type for the UI
+interface DisplayEvent {
+    id: string;
+    title: string;
+    shortDescription: string | null;
+    date: string;
+    time: string;
+    location: string;
+    type: string;
+    registrations: number;
+    capacity: number;
+    status: string;
+    price: number;
+    earlyBirdPrice: number | null;
+    earlyBirdDeadline: string | null;
+    cmeCredits: number | null;
+    image: string | null;
+    featured: boolean;
+    sponsors: { name: string; tier: string; logo: string | null }[];
+    speakers: number;
+    sessions: number;
+}
 
 const tierIcons = {
     platinum: Crown,
@@ -254,19 +86,101 @@ const typeIcons: Record<string, React.ElementType> = {
 export default function PublicEventsPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [filterType, setFilterType] = useState("all");
-    const [filterStatus, setFilterStatus] = useState("upcoming");
+    const [filterStatus, setFilterStatus] = useState("UPCOMING");
+
+    // Data from API
+    const [events, setEvents] = useState<DisplayEvent[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState({
+        upcoming: 0,
+        speakers: 0,
+        cmeCredits: 0,
+        registrations: 0,
+    });
+
+    // Fetch events from API
+    useEffect(() => {
+        async function fetchEvents() {
+            try {
+                setLoading(true);
+                const response = await eventsService.getPublic({ limit: 50 });
+
+                if (response.success && response.data) {
+                    const eventList = Array.isArray(response.data) ? response.data : [];
+                    const displayEvents: DisplayEvent[] = eventList.map((event: Event) => ({
+                        id: event.id,
+                        title: event.title,
+                        shortDescription: event.shortDescription,
+                        date: new Date(event.startDate).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                        }),
+                        time: event.startTime ? `${event.startTime} - ${event.endTime || ""}` : "TBA",
+                        location: [event.location, event.city].filter(Boolean).join(", ") || (event.isVirtual ? "Virtual Event" : "TBA"),
+                        type: event.type,
+                        registrations: event._count?.registrations || 0,
+                        capacity: event.capacity,
+                        status: event.status,
+                        price: event.price,
+                        earlyBirdPrice: event.earlyBirdPrice,
+                        earlyBirdDeadline: event.earlyBirdDeadline ? new Date(event.earlyBirdDeadline).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                        }) : null,
+                        cmeCredits: event.cmeCredits,
+                        image: getEventImage(event.bannerImage, event.thumbnailImage, event.type),
+                        featured: event.isFeatured,
+                        sponsors: event.eventSponsors?.map(es => ({
+                            name: es.sponsor.name,
+                            tier: es.tier.toLowerCase(),
+                            logo: es.sponsor.logo,
+                        })) || [],
+                        speakers: event.eventSpeakers?.length || 0,
+                        sessions: event.eventSpeakers?.length || 0, // Using speaker count as session estimate
+                    }));
+
+                    setEvents(displayEvents);
+
+                    // Calculate stats from live data
+                    const upcomingCount = displayEvents.filter(e => e.status === "UPCOMING").length;
+                    const totalCME = displayEvents.reduce((acc, e) => acc + (e.cmeCredits || 0), 0);
+                    const totalRegistrations = displayEvents.reduce((acc, e) => acc + e.registrations, 0);
+                    // Count unique speakers across all events
+                    const uniqueSpeakers = new Set<string>();
+                    eventList.forEach(event => {
+                        event.eventSpeakers?.forEach(es => uniqueSpeakers.add(es.speaker.id));
+                    });
+
+                    setStats({
+                        upcoming: upcomingCount,
+                        speakers: uniqueSpeakers.size,
+                        cmeCredits: totalCME,
+                        registrations: totalRegistrations,
+                    });
+                }
+            } catch (error) {
+                console.error("Failed to fetch events:", error);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchEvents();
+    }, []);
 
     const filteredEvents = events.filter((event) => {
         const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesType = filterType === "all" || event.type.toLowerCase() === filterType.toLowerCase();
+        const matchesType = filterType === "all" || event.type === filterType;
         const matchesStatus = filterStatus === "all" || event.status === filterStatus;
         return matchesSearch && matchesType && matchesStatus;
     });
 
-    const featuredEvent = filteredEvents.find(e => e.featured && e.status === "upcoming");
-    const regularEvents = filteredEvents.filter(e => !(e.featured && e.status === "upcoming"));
+    const featuredEvent = filteredEvents.find(e => e.featured && e.status === "UPCOMING");
+    const regularEvents = filteredEvents.filter(e => e !== featuredEvent);
 
-    const getSlotsInfo = (event: typeof events[0]) => {
+    const getSlotsInfo = (event: DisplayEvent) => {
         const remaining = event.capacity - event.registrations;
         const percentage = (event.registrations / event.capacity) * 100;
         if (remaining <= 0) return { text: "Sold Out", color: "text-destructive", percentage: 100, urgent: true };
@@ -348,24 +262,30 @@ export default function PublicEventsPage() {
             {/* Stats Bar */}
             <section className="py-6 border-y bg-background/50 backdrop-blur">
                 <div className="container mx-auto px-4">
-                    <div className="flex flex-wrap justify-center gap-8 md:gap-16">
-                        <div className="text-center">
-                            <div className="text-3xl font-bold text-primary">{events.filter(e => e.status === 'upcoming').length}</div>
-                            <div className="text-sm text-muted-foreground">Upcoming Events</div>
+                    {loading ? (
+                        <div className="flex justify-center">
+                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
                         </div>
-                        <div className="text-center">
-                            <div className="text-3xl font-bold text-primary">{events.reduce((acc, e) => acc + e.speakers, 0)}</div>
-                            <div className="text-sm text-muted-foreground">Expert Speakers</div>
+                    ) : (
+                        <div className="flex flex-wrap justify-center gap-8 md:gap-16">
+                            <div className="text-center">
+                                <div className="text-3xl font-bold text-primary">{stats.upcoming}</div>
+                                <div className="text-sm text-muted-foreground">Upcoming Events</div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-3xl font-bold text-primary">{stats.speakers}</div>
+                                <div className="text-sm text-muted-foreground">Expert Speakers</div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-3xl font-bold text-primary">{stats.cmeCredits}</div>
+                                <div className="text-sm text-muted-foreground">CME Credits Available</div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-3xl font-bold text-primary">{stats.registrations}+</div>
+                                <div className="text-sm text-muted-foreground">Registrations</div>
+                            </div>
                         </div>
-                        <div className="text-center">
-                            <div className="text-3xl font-bold text-primary">{events.reduce((acc, e) => acc + e.cmeCredits, 0)}</div>
-                            <div className="text-sm text-muted-foreground">CME Credits Available</div>
-                        </div>
-                        <div className="text-center">
-                            <div className="text-3xl font-bold text-primary">{events.reduce((acc, e) => acc + e.registrations, 0)}+</div>
-                            <div className="text-sm text-muted-foreground">Registrations</div>
-                        </div>
-                    </div>
+                    )}
                 </div>
             </section>
 
@@ -380,11 +300,11 @@ export default function PublicEventsPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Types</SelectItem>
-                                    <SelectItem value="conference">Conference</SelectItem>
-                                    <SelectItem value="workshop">Workshop</SelectItem>
-                                    <SelectItem value="symposium">Symposium</SelectItem>
-                                    <SelectItem value="seminar">Seminar</SelectItem>
-                                    <SelectItem value="cme">CME Session</SelectItem>
+                                    {EVENT_TYPES.map((type) => (
+                                        <SelectItem key={type.value} value={type.value}>
+                                            {type.label}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                             <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -392,9 +312,11 @@ export default function PublicEventsPage() {
                                     <SelectValue placeholder="Status" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Events</SelectItem>
-                                    <SelectItem value="upcoming">Upcoming</SelectItem>
-                                    <SelectItem value="completed">Past Events</SelectItem>
+                                    {PUBLIC_STATUS_OPTIONS.map((status) => (
+                                        <SelectItem key={status.value} value={status.value}>
+                                            {status.label}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -435,7 +357,7 @@ export default function PublicEventsPage() {
                                             <Badge className={cn("rounded-full", typeColors[featuredEvent.type]?.bg, typeColors[featuredEvent.type]?.text)}>
                                                 {featuredEvent.type}
                                             </Badge>
-                                            {featuredEvent.cmeCredits > 0 && (
+                                            {(featuredEvent.cmeCredits ?? 0) > 0 && (
                                                 <Badge variant="outline" className="rounded-full gap-1 status-active">
                                                     <Award className="h-3 w-3" />
                                                     {featuredEvent.cmeCredits} CME Credits
@@ -488,13 +410,21 @@ export default function PublicEventsPage() {
                                                     </p>
                                                 )}
                                             </div>
-                                            <Link href={`/events/${featuredEvent.id}/register`}>
-                                                <Button size="lg" className="rounded-xl gap-2 gradient-medical text-white hover:opacity-90 shadow-lg shadow-primary/25">
-                                                    <Ticket className="h-5 w-5" />
-                                                    Register Now
-                                                    <ArrowRight className="h-5 w-5" />
-                                                </Button>
-                                            </Link>
+                                            <div className="flex gap-3">
+                                                <Link href={`/events/${featuredEvent.id}`}>
+                                                    <Button size="lg" variant="outline" className="rounded-xl gap-2">
+                                                        <Eye className="h-5 w-5" />
+                                                        View Details
+                                                    </Button>
+                                                </Link>
+                                                <Link href={`/events/${featuredEvent.id}/register`}>
+                                                    <Button size="lg" className="rounded-xl gap-2 gradient-medical text-white hover:opacity-90 shadow-lg shadow-primary/25">
+                                                        <Ticket className="h-5 w-5" />
+                                                        Register Now
+                                                        <ArrowRight className="h-5 w-5" />
+                                                    </Button>
+                                                </Link>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -507,6 +437,19 @@ export default function PublicEventsPage() {
             {/* Events Grid */}
             <section className="py-12">
                 <div className="container mx-auto px-4">
+                    {/* Empty State */}
+                    {!loading && filteredEvents.length === 0 && (
+                        <div className="text-center py-16">
+                            <Calendar className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
+                            <h3 className="text-xl font-semibold mb-2">No Events Found</h3>
+                            <p className="text-muted-foreground max-w-md mx-auto">
+                                {searchQuery || filterType !== "all" || filterStatus !== "all"
+                                    ? "No events match your search criteria. Try adjusting your filters."
+                                    : "No events are currently available. Please check back later."}
+                            </p>
+                        </div>
+                    )}
+
                     {regularEvents.length > 0 && (
                         <>
                             <div className="flex items-center gap-3 mb-8">
@@ -521,139 +464,75 @@ export default function PublicEventsPage() {
                                     const colors = typeColors[event.type] || typeColors.Seminar;
 
                                     return (
-                                        <div
+                                        <Link
                                             key={event.id}
+                                            href={`/events/${event.id}`}
                                             className={cn(
-                                                "group relative bg-card rounded-2xl border border-border/50 overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-2",
-                                                event.status === "completed" && "opacity-75"
+                                                "group relative bg-card rounded-2xl border border-border/50 overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30",
+                                                event.status === "COMPLETED" && "opacity-75"
                                             )}
                                             style={{ animationDelay: `${index * 0.1}s` }}
                                         >
-                                            {/* Card Header / Image Area */}
+                                            {/* Compact Header */}
                                             <div className={cn(
-                                                "relative h-48 flex items-center justify-center overflow-hidden",
-                                                "bg-gradient-to-br from-muted/50 to-muted"
+                                                "relative p-4 flex items-start gap-4",
+                                                "bg-gradient-to-r from-muted/30 to-transparent"
                                             )}>
-                                                {/* Background Pattern */}
-                                                <div className="absolute inset-0 opacity-30">
-                                                    <div className="absolute top-4 right-4 w-20 h-20 rounded-full border border-primary/20" />
-                                                    <div className="absolute bottom-8 left-8 w-12 h-12 rounded-full border border-primary/10" />
-                                                </div>
-
                                                 {/* Type Icon */}
                                                 <div className={cn(
-                                                    "relative z-10 w-20 h-20 rounded-2xl flex items-center justify-center transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3",
+                                                    "w-14 h-14 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-105",
                                                     colors.icon
                                                 )}>
-                                                    <TypeIcon className="h-10 w-10 text-white" />
+                                                    <TypeIcon className="h-7 w-7 text-white" />
                                                 </div>
 
-                                                {/* Status Badge */}
-                                                <div className="absolute top-4 left-4">
-                                                    <Badge
-                                                        className={cn(
-                                                            "rounded-full shadow-sm",
-                                                            event.status === "upcoming"
-                                                                ? "bg-medical-green text-white"
-                                                                : "bg-muted text-muted-foreground"
-                                                        )}
-                                                    >
-                                                        {event.status === "upcoming" ? "Upcoming" : "Completed"}
-                                                    </Badge>
-                                                </div>
-
-                                                {/* CME Credits */}
-                                                {event.cmeCredits > 0 && (
-                                                    <div className="absolute top-4 right-4">
-                                                        <Badge variant="secondary" className="rounded-full gap-1 bg-white/90 text-foreground shadow-sm">
-                                                            <Award className="h-3 w-3 text-medical-gold" />
-                                                            {event.cmeCredits} CME
-                                                        </Badge>
-                                                    </div>
-                                                )}
-
-                                                {/* Date Overlay */}
-                                                <div className="absolute bottom-4 left-4 right-4">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/90 backdrop-blur shadow-sm">
-                                                            <Calendar className="h-4 w-4 text-primary" />
-                                                            <span className="text-sm font-medium">{event.date}</span>
-                                                        </div>
-                                                        <Badge variant="outline" className={cn("rounded-full bg-white/90", colors.text)}>
+                                                {/* Title & Type */}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <Badge variant="outline" className={cn("rounded-full text-xs", colors.text)}>
                                                             {event.type}
                                                         </Badge>
+                                                        {(event.cmeCredits ?? 0) > 0 && (
+                                                            <Badge variant="secondary" className="rounded-full gap-1 text-xs">
+                                                                <Award className="h-3 w-3 text-medical-gold" />
+                                                                {event.cmeCredits} CME
+                                                            </Badge>
+                                                        )}
                                                     </div>
+                                                    <h3 className="font-bold text-base line-clamp-2 group-hover:text-primary transition-colors">
+                                                        {event.title}
+                                                    </h3>
                                                 </div>
                                             </div>
 
                                             {/* Card Content */}
-                                            <div className="p-6">
-                                                <h3 className="text-lg font-bold mb-2 line-clamp-2 group-hover:text-primary transition-colors">
-                                                    <Link href={`/events/${event.id}`}>
-                                                        {event.title}
-                                                    </Link>
-                                                </h3>
-
-                                                <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                                                    {event.shortDescription}
-                                                </p>
-
-                                                {/* Event Details */}
-                                                <div className="space-y-2 mb-4">
-                                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                        <Clock className="h-4 w-4 shrink-0" />
-                                                        <span className="truncate">{event.time}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                        <MapPin className="h-4 w-4 shrink-0" />
-                                                        <span className="truncate">{event.location}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                        <Users className="h-4 w-4 shrink-0" />
-                                                        <span>{event.speakers} Speakers • {event.sessions} Sessions</span>
-                                                    </div>
+                                            <div className="px-4 pb-4">
+                                                {/* Event Meta */}
+                                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mb-3">
+                                                    <span className="flex items-center gap-1.5">
+                                                        <Calendar className="h-3.5 w-3.5 text-primary" />
+                                                        {event.date}
+                                                    </span>
+                                                    <span className="flex items-center gap-1.5">
+                                                        <MapPin className="h-3.5 w-3.5" />
+                                                        <span className="truncate max-w-[120px]">{event.location}</span>
+                                                    </span>
                                                 </div>
 
-                                                {/* Sponsors Preview */}
-                                                {event.sponsors.length > 0 && (
-                                                    <div className="flex items-center gap-1 mb-4">
-                                                        {event.sponsors.slice(0, 3).map((sponsor, idx) => {
-                                                            const TierIcon = tierIcons[sponsor.tier as keyof typeof tierIcons] || Star;
-                                                            return (
-                                                                <div
-                                                                    key={idx}
-                                                                    className={cn(
-                                                                        "w-8 h-8 rounded-full flex items-center justify-center border-2 -ml-2 first:ml-0",
-                                                                        sponsor.tier === "platinum" && "bg-slate-100 border-slate-300",
-                                                                        sponsor.tier === "gold" && "bg-yellow-50 border-yellow-300",
-                                                                        sponsor.tier === "silver" && "bg-gray-100 border-gray-300"
-                                                                    )}
-                                                                    title={sponsor.name}
-                                                                >
-                                                                    <TierIcon className={cn(
-                                                                        "h-4 w-4",
-                                                                        sponsor.tier === "platinum" && "text-slate-600",
-                                                                        sponsor.tier === "gold" && "text-yellow-600",
-                                                                        sponsor.tier === "silver" && "text-gray-500"
-                                                                    )} />
-                                                                </div>
-                                                            );
-                                                        })}
-                                                        {event.sponsors.length > 3 && (
-                                                            <span className="text-xs text-muted-foreground ml-1">
-                                                                +{event.sponsors.length - 3} more
-                                                            </span>
-                                                        )}
-                                                    </div>
+                                                {/* Short Description */}
+                                                {event.shortDescription && (
+                                                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                                                        {event.shortDescription}
+                                                    </p>
                                                 )}
 
-                                                {/* Progress & Slots */}
-                                                <div className="mb-5">
-                                                    <div className="flex items-center justify-between mb-2">
-                                                        <span className="text-xs text-muted-foreground">
+                                                {/* Progress Bar */}
+                                                <div className="mb-4">
+                                                    <div className="flex items-center justify-between mb-1.5 text-xs">
+                                                        <span className="text-muted-foreground">
                                                             {event.registrations}/{event.capacity} registered
                                                         </span>
-                                                        <span className={cn("text-xs font-medium", slots.color)}>
+                                                        <span className={cn("font-medium", slots.color)}>
                                                             {slots.urgent && <span className="inline-block w-1.5 h-1.5 rounded-full bg-current mr-1 animate-pulse" />}
                                                             {slots.text}
                                                         </span>
@@ -663,7 +542,7 @@ export default function PublicEventsPage() {
                                                             className={cn(
                                                                 "h-full rounded-full transition-all duration-700",
                                                                 slots.percentage >= 90 ? "bg-destructive" :
-                                                                slots.percentage >= 70 ? "bg-medical-orange" : "bg-medical-teal"
+                                                                    slots.percentage >= 70 ? "bg-medical-orange" : "bg-medical-teal"
                                                             )}
                                                             style={{ width: `${slots.percentage}%` }}
                                                         />
@@ -671,37 +550,36 @@ export default function PublicEventsPage() {
                                                 </div>
 
                                                 {/* Footer */}
-                                                <div className="flex items-center justify-between pt-4 border-t">
-                                                    {event.status === "upcoming" ? (
-                                                        <>
-                                                            <div>
-                                                                {event.earlyBirdPrice && (
-                                                                    <span className="text-xs text-muted-foreground line-through mr-1">
-                                                                        ₹{event.price.toLocaleString()}
-                                                                    </span>
-                                                                )}
-                                                                <span className="text-xl font-bold text-primary">
-                                                                    ₹{(event.earlyBirdPrice || event.price).toLocaleString()}
-                                                                </span>
-                                                            </div>
-                                                            <Link href={`/events/${event.id}/register`}>
-                                                                <Button size="sm" className="rounded-xl gap-1 gradient-medical text-white hover:opacity-90">
-                                                                    Register
-                                                                    <ArrowRight className="h-4 w-4" />
-                                                                </Button>
-                                                            </Link>
-                                                        </>
+                                                <div className="flex items-center justify-between pt-3 border-t">
+                                                    <div>
+                                                        {event.earlyBirdPrice && (
+                                                            <span className="text-xs text-muted-foreground line-through mr-1">
+                                                                ₹{event.price.toLocaleString()}
+                                                            </span>
+                                                        )}
+                                                        <span className="text-lg font-bold text-primary">
+                                                            ₹{(event.earlyBirdPrice || event.price).toLocaleString()}
+                                                        </span>
+                                                    </div>
+                                                    {event.status === "UPCOMING" || event.status === "ACTIVE" ? (
+                                                        <div
+                                                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium group-hover:bg-primary/90 transition-colors"
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                window.location.href = `/events/${event.id}/register`;
+                                                            }}
+                                                        >
+                                                            Register
+                                                            <ArrowRight className="h-4 w-4" />
+                                                        </div>
                                                     ) : (
-                                                        <Link href={`/events/${event.id}`} className="w-full">
-                                                            <Button variant="outline" size="sm" className="w-full rounded-xl gap-1">
-                                                                View Details
-                                                                <ChevronRight className="h-4 w-4" />
-                                                            </Button>
-                                                        </Link>
+                                                        <Badge variant="secondary" className="rounded-full">
+                                                            Completed
+                                                        </Badge>
                                                     )}
                                                 </div>
                                             </div>
-                                        </div>
+                                        </Link>
                                     );
                                 })}
                             </div>

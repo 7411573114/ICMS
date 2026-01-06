@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -11,164 +11,253 @@ import {
     Award,
     ArrowLeft,
     Share2,
-    Heart,
     Ticket,
     GraduationCap,
     Building2,
-    User,
     Crown,
     Medal,
-    Star,
     ExternalLink,
     Phone,
     Mail,
     Globe,
-    ChevronRight,
     CheckCircle2,
     AlertCircle,
+    Loader2,
 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { eventsService, Event, EventSpeaker, EventSponsor, EventSession } from "@/services/events";
 
-// Mock event data - in real app, fetch from API
-const eventData = {
-    id: 1,
-    title: "National Neurostimulation Summit 2026",
-    description: `Join us for India's premier neurostimulation conference of the year, bringing together leading experts, researchers, and clinicians from across the globe.
+// Display types
+interface DisplaySession {
+    id: string;
+    title: string;
+    description: string | null;
+    date: string | null;
+    startTime: string | null;
+    endTime: string | null;
+    venue: string | null;
+    speaker?: {
+        id: string;
+        name: string;
+        designation: string | null;
+        institution: string | null;
+        photo: string | null;
+    } | null;
+}
 
-This comprehensive 2-day summit will cover the latest advances in deep brain stimulation, spinal cord stimulation, and emerging neurostimulation technologies. Participants will gain insights into cutting-edge research, clinical best practices, and future directions in the field.
-
-**Key Topics:**
-- Deep Brain Stimulation for Movement Disorders
-- Spinal Cord Stimulation Techniques
-- Closed-Loop Neurostimulation Systems
-- Non-Invasive Brain Stimulation
-- Clinical Outcomes and Patient Selection
-- Emerging Technologies and Future Directions`,
-    date: "Jan 10-11, 2026",
-    startDate: "2026-01-10",
-    endDate: "2026-01-11",
-    time: "09:00 AM - 05:00 PM",
-    location: "Grand Conference Hall, AIIMS, New Delhi",
-    address: "Ansari Nagar, New Delhi, Delhi 110029",
-    mapLink: "https://maps.google.com",
-    type: "Conference",
-    registrations: 156,
-    capacity: 200,
-    status: "upcoming",
-    price: 6500,
-    earlyBirdPrice: 5000,
-    earlyBirdDeadline: "Dec 31, 2025",
-    cmeCredits: 16,
-    contactEmail: "summit@aiims.edu",
-    contactPhone: "+91 11 2659 3000",
-    website: "https://neurostim.aiims.edu",
-    categories: [
-        { name: "Faculty", price: 6500, earlyBirdPrice: 5000, slots: 60, registered: 48 },
-        { name: "Resident/Fellow", price: 4000, earlyBirdPrice: 3500, slots: 100, registered: 82 },
-        { name: "Student", price: 2000, earlyBirdPrice: 1500, slots: 40, registered: 26 },
-    ],
-    sponsors: [
-        { id: 1, name: "Medtronic India", tier: "platinum", website: "https://medtronic.com", logo: null },
-        { id: 2, name: "Boston Scientific", tier: "gold", website: "https://bostonscientific.com", logo: null },
-        { id: 3, name: "Abbott Neuromodulation", tier: "gold", website: "https://abbott.com", logo: null },
-        { id: 4, name: "Stryker India", tier: "silver", website: "https://stryker.com", logo: null },
-        { id: 5, name: "LivaNova", tier: "silver", website: "https://livanova.com", logo: null },
-    ],
-    speakers: [
-        {
-            id: 1,
-            name: "Dr. Rajesh Kumar",
-            designation: "Professor & Head, Neurology",
-            institution: "AIIMS, New Delhi",
-            topic: "Advances in Deep Brain Stimulation",
-            photo: null,
-        },
-        {
-            id: 2,
-            name: "Dr. Priya Sharma",
-            designation: "Associate Professor, Neurosurgery",
-            institution: "CMC Vellore",
-            topic: "Minimally Invasive Neurosurgical Techniques",
-            photo: null,
-        },
-        {
-            id: 3,
-            name: "Dr. Sarah Johnson",
-            designation: "Professor, Neuroscience",
-            institution: "Johns Hopkins University, USA",
-            topic: "Future of Brain-Computer Interfaces",
-            photo: null,
-        },
-        {
-            id: 4,
-            name: "Dr. Amit Patel",
-            designation: "Consultant Neurophysiologist",
-            institution: "Kokilaben Hospital, Mumbai",
-            topic: "Intraoperative Neurophysiological Monitoring",
-            photo: null,
-        },
-    ],
-    schedule: [
-        {
-            day: "Day 1 - Jan 10, 2026",
-            sessions: [
-                { time: "09:00 - 09:30", title: "Registration & Welcome Coffee", speaker: null },
-                { time: "09:30 - 10:00", title: "Inaugural Session", speaker: null },
-                { time: "10:00 - 11:00", title: "Keynote: Future of Neurostimulation", speaker: "Dr. Rajesh Kumar" },
-                { time: "11:00 - 11:30", title: "Tea Break", speaker: null },
-                { time: "11:30 - 13:00", title: "Panel Discussion: Clinical Challenges", speaker: "Multiple Speakers" },
-                { time: "13:00 - 14:00", title: "Lunch Break", speaker: null },
-                { time: "14:00 - 15:30", title: "Workshop: DBS Programming Basics", speaker: "Dr. Priya Sharma" },
-                { time: "15:30 - 16:00", title: "Tea Break", speaker: null },
-                { time: "16:00 - 17:00", title: "Research Presentations", speaker: "Various" },
-            ],
-        },
-        {
-            day: "Day 2 - Jan 11, 2026",
-            sessions: [
-                { time: "09:00 - 10:00", title: "Brain-Computer Interfaces", speaker: "Dr. Sarah Johnson" },
-                { time: "10:00 - 11:00", title: "Intraoperative Monitoring", speaker: "Dr. Amit Patel" },
-                { time: "11:00 - 11:30", title: "Tea Break", speaker: null },
-                { time: "11:30 - 13:00", title: "Case Discussions", speaker: "Panel" },
-                { time: "13:00 - 14:00", title: "Lunch Break", speaker: null },
-                { time: "14:00 - 15:30", title: "Hands-on Session", speaker: "Faculty" },
-                { time: "15:30 - 16:30", title: "Quiz & Awards", speaker: null },
-                { time: "16:30 - 17:00", title: "Valedictory & Certificate Distribution", speaker: null },
-            ],
-        },
-    ],
-    includes: [
-        "Conference kit and materials",
-        "Lunch and refreshments on both days",
-        "CME Certificate (16 credits)",
-        "Access to all sessions and workshops",
-        "Networking opportunities",
-        "Post-event presentation downloads",
-    ],
-};
+interface DisplayEvent {
+    id: string;
+    title: string;
+    description: string | null;
+    date: string;
+    startDate: string;
+    endDate: string;
+    time: string;
+    location: string;
+    address: string | null;
+    mapLink: string | null;
+    type: string;
+    registrations: number;
+    capacity: number;
+    status: string;
+    price: number;
+    earlyBirdPrice: number | null;
+    earlyBirdDeadline: string | null;
+    cmeCredits: number | null;
+    contactEmail: string | null;
+    contactPhone: string | null;
+    website: string | null;
+    sponsors: { id: string; name: string; tier: string; website: string | null; logo: string | null }[];
+    speakers: { id: string; name: string; designation: string | null; institution: string | null; topic: string | null; photo: string | null }[];
+    sessions: DisplaySession[];
+    includes: string[];
+}
 
 const tierConfig = {
     platinum: { icon: Crown, bgClass: "bg-slate-100", textClass: "text-slate-700", borderClass: "border-slate-300" },
     gold: { icon: Award, bgClass: "bg-yellow-50", textClass: "text-yellow-700", borderClass: "border-yellow-300" },
     silver: { icon: Medal, bgClass: "bg-gray-100", textClass: "text-gray-600", borderClass: "border-gray-300" },
+    bronze: { icon: Medal, bgClass: "bg-orange-50", textClass: "text-orange-700", borderClass: "border-orange-300" },
 };
 
 export default function EventDetailPage() {
     const params = useParams();
-    const event = eventData; // In real app, fetch by params.id
+    const eventId = params.id as string;
     const [activeTab, setActiveTab] = useState("overview");
+    const [event, setEvent] = useState<DisplayEvent | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [isPreviewMode, setIsPreviewMode] = useState(false);
 
-    const slotsRemaining = event.capacity - event.registrations;
-    const isAlmostFull = slotsRemaining <= 20;
+    // Check if page was opened as preview from dashboard
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            // Only show preview mode if explicitly set via query param
+            const urlParams = new URLSearchParams(window.location.search);
+            const isPreview = urlParams.get("preview") === "true";
+            setIsPreviewMode(isPreview);
+        }
+    }, []);
+
+    // Fetch event from API
+    useEffect(() => {
+        async function fetchEvent() {
+            try {
+                setLoading(true);
+                setError(null);
+                const response = await eventsService.getById(eventId);
+
+                if (response.success && response.data) {
+                    const apiEvent = response.data;
+                    const startDate = new Date(apiEvent.startDate);
+                    const endDate = new Date(apiEvent.endDate);
+
+                    const displayEvent: DisplayEvent = {
+                        id: apiEvent.id,
+                        title: apiEvent.title,
+                        description: apiEvent.description,
+                        date: startDate.toDateString() === endDate.toDateString()
+                            ? startDate.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                            : `${startDate.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} - ${endDate.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`,
+                        startDate: apiEvent.startDate,
+                        endDate: apiEvent.endDate,
+                        time: apiEvent.startTime ? `${apiEvent.startTime} - ${apiEvent.endTime || ""}` : "TBA",
+                        location: [apiEvent.location, apiEvent.city].filter(Boolean).join(", ") || (apiEvent.isVirtual ? "Virtual Event" : "TBA"),
+                        address: [apiEvent.address, apiEvent.city, apiEvent.state, apiEvent.country].filter(Boolean).join(", "),
+                        mapLink: apiEvent.mapLink,
+                        type: apiEvent.type,
+                        registrations: apiEvent._count?.registrations || 0,
+                        capacity: apiEvent.capacity,
+                        status: apiEvent.status.toLowerCase(),
+                        price: Number(apiEvent.price),
+                        earlyBirdPrice: apiEvent.earlyBirdPrice ? Number(apiEvent.earlyBirdPrice) : null,
+                        earlyBirdDeadline: apiEvent.earlyBirdDeadline ? new Date(apiEvent.earlyBirdDeadline).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : null,
+                        cmeCredits: apiEvent.cmeCredits,
+                        contactEmail: apiEvent.contactEmail,
+                        contactPhone: apiEvent.contactPhone,
+                        website: apiEvent.website,
+                        sponsors: apiEvent.eventSponsors?.map((es: EventSponsor) => ({
+                            id: es.sponsor.id,
+                            name: es.sponsor.name,
+                            tier: es.tier.toLowerCase(),
+                            website: null,
+                            logo: es.sponsor.logo,
+                        })) || [],
+                        // Get sessions from eventSessions
+                        sessions: apiEvent.eventSessions?.map((es: EventSession) => ({
+                            id: es.id,
+                            title: es.title,
+                            description: es.description,
+                            date: es.sessionDate ? new Date(es.sessionDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : null,
+                            startTime: es.startTime,
+                            endTime: es.endTime,
+                            venue: es.venue,
+                            speaker: es.speaker ? {
+                                id: es.speaker.id,
+                                name: es.speaker.name,
+                                designation: es.speaker.designation,
+                                institution: es.speaker.institution,
+                                photo: es.speaker.photo,
+                            } : null,
+                        })) || [],
+                        // Derive unique speakers from sessions
+                        speakers: (() => {
+                            const speakerMap = new Map<string, { id: string; name: string; designation: string | null; institution: string | null; topic: string | null; photo: string | null }>();
+                            // First add speakers from eventSessions (new model)
+                            apiEvent.eventSessions?.forEach((es: EventSession) => {
+                                if (es.speaker && !speakerMap.has(es.speaker.id)) {
+                                    speakerMap.set(es.speaker.id, {
+                                        id: es.speaker.id,
+                                        name: es.speaker.name,
+                                        designation: es.speaker.designation,
+                                        institution: es.speaker.institution,
+                                        topic: es.title, // Use session title as topic
+                                        photo: es.speaker.photo,
+                                    });
+                                }
+                            });
+                            // Fallback to eventSpeakers for backward compatibility
+                            if (speakerMap.size === 0 && apiEvent.eventSpeakers) {
+                                apiEvent.eventSpeakers.forEach((es: EventSpeaker) => {
+                                    if (!speakerMap.has(es.speaker.id)) {
+                                        speakerMap.set(es.speaker.id, {
+                                            id: es.speaker.id,
+                                            name: es.speaker.name,
+                                            designation: es.speaker.designation,
+                                            institution: es.speaker.institution,
+                                            topic: es.topic,
+                                            photo: es.speaker.photo,
+                                        });
+                                    }
+                                });
+                            }
+                            return Array.from(speakerMap.values());
+                        })(),
+                        includes: apiEvent.includes?.length > 0
+                            ? apiEvent.includes
+                            : [
+                                "Conference kit and materials",
+                                "Refreshments during sessions",
+                                apiEvent.cmeCredits ? `CME Certificate (${apiEvent.cmeCredits} credits)` : null,
+                                "Access to all sessions",
+                                "Networking opportunities",
+                            ].filter(Boolean) as string[],
+                    };
+
+                    setEvent(displayEvent);
+                } else {
+                    setError("Event not found");
+                }
+            } catch (err) {
+                console.error("Failed to fetch event:", err);
+                setError("Failed to load event");
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        if (eventId) {
+            fetchEvent();
+        }
+    }, [eventId]);
 
     const getInitials = (name: string) => {
         return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
     };
+
+    const handleBack = () => {
+        if (isPreviewMode) {
+            window.close();
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
+
+    if (error || !event) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+                <AlertCircle className="h-12 w-12 text-destructive" />
+                <h1 className="text-xl font-semibold">{error || "Event not found"}</h1>
+                <Link href="/events">
+                    <Button variant="outline">Back to Events</Button>
+                </Link>
+            </div>
+        );
+    }
+
+    const slotsRemaining = event.capacity - event.registrations;
+    const isAlmostFull = slotsRemaining <= 20;
 
     return (
         <div className="min-h-screen bg-background">
@@ -198,11 +287,26 @@ export default function EventDetailPage() {
 
             {/* Back Navigation */}
             <div className="border-b">
-                <div className="container mx-auto px-4 py-4">
-                    <Link href="/events" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-                        <ArrowLeft className="h-4 w-4" />
-                        Back to Events
-                    </Link>
+                <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+                    {isPreviewMode ? (
+                        <button
+                            onClick={handleBack}
+                            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            Close Preview
+                        </button>
+                    ) : (
+                        <Link href="/events" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+                            <ArrowLeft className="h-4 w-4" />
+                            Back to Events
+                        </Link>
+                    )}
+                    {isPreviewMode && (
+                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">
+                            Preview Mode
+                        </Badge>
+                    )}
                 </div>
             </div>
 
@@ -215,7 +319,7 @@ export default function EventDetailPage() {
                             <div className="flex flex-wrap gap-2 mb-4">
                                 <Badge className="status-upcoming">{event.status}</Badge>
                                 <Badge variant="outline">{event.type}</Badge>
-                                {event.cmeCredits > 0 && (
+                                {(event.cmeCredits ?? 0) > 0 && (
                                     <Badge variant="outline" className="gap-1 status-active">
                                         <Award className="h-3 w-3" />
                                         {event.cmeCredits} CME Credits
@@ -285,50 +389,74 @@ export default function EventDetailPage() {
                                             <h4 className="font-medium">{event.location}</h4>
                                             <p className="text-sm text-muted-foreground">{event.address}</p>
                                         </div>
-                                        <Button variant="outline" className="gap-2" asChild>
-                                            <a href={event.mapLink} target="_blank" rel="noopener noreferrer">
-                                                <MapPin className="h-4 w-4" />
-                                                View on Google Maps
-                                                <ExternalLink className="h-3 w-3" />
-                                            </a>
-                                        </Button>
+                                        {event.mapLink && (
+                                            <Button variant="outline" className="gap-2" asChild>
+                                                <a href={event.mapLink} target="_blank" rel="noopener noreferrer">
+                                                    <MapPin className="h-4 w-4" />
+                                                    View on Google Maps
+                                                    <ExternalLink className="h-3 w-3" />
+                                                </a>
+                                            </Button>
+                                        )}
                                     </CardContent>
                                 </Card>
                             </TabsContent>
 
                             <TabsContent value="schedule" className="space-y-6 mt-6">
-                                {event.schedule.map((day, dayIndex) => (
-                                    <Card key={dayIndex}>
-                                        <CardHeader>
-                                            <CardTitle>{day.day}</CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="space-y-4">
-                                                {day.sessions.map((session, sessionIndex) => (
-                                                    <div
-                                                        key={sessionIndex}
-                                                        className={cn(
-                                                            "flex gap-4 p-3 rounded-lg",
-                                                            session.speaker ? "bg-muted/50" : "bg-muted/30"
-                                                        )}
-                                                    >
-                                                        <div className="w-28 shrink-0 font-mono text-sm text-muted-foreground">
-                                                            {session.time}
+                                {event.sessions.length === 0 ? (
+                                    <Card>
+                                        <CardContent className="py-12 text-center">
+                                            <Calendar className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                                            <p className="text-muted-foreground">No sessions scheduled yet</p>
+                                        </CardContent>
+                                    </Card>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {event.sessions.map((session) => (
+                                            <Card key={session.id} className="card-hover">
+                                                <CardContent className="pt-6">
+                                                    <div className="flex flex-col md:flex-row md:items-start gap-4">
+                                                        <div className="flex-shrink-0 text-center md:text-left md:w-32">
+                                                            {session.date && (
+                                                                <div className="text-sm font-medium text-primary">{session.date}</div>
+                                                            )}
+                                                            {session.startTime && (
+                                                                <div className="text-xs text-muted-foreground">
+                                                                    {session.startTime}{session.endTime ? ` - ${session.endTime}` : ""}
+                                                                </div>
+                                                            )}
+                                                            {session.venue && (
+                                                                <div className="text-xs text-muted-foreground mt-1">{session.venue}</div>
+                                                            )}
                                                         </div>
-                                                        <div>
-                                                            <p className="font-medium">{session.title}</p>
+                                                        <div className="flex-1">
+                                                            <h3 className="font-semibold text-lg">{session.title}</h3>
+                                                            {session.description && (
+                                                                <p className="text-sm text-muted-foreground mt-1">{session.description}</p>
+                                                            )}
                                                             {session.speaker && (
-                                                                <p className="text-sm text-muted-foreground">
-                                                                    {session.speaker}
-                                                                </p>
+                                                                <div className="flex items-center gap-3 mt-3 pt-3 border-t">
+                                                                    <Avatar className="h-10 w-10">
+                                                                        <AvatarImage src={session.speaker.photo || undefined} />
+                                                                        <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                                                                            {getInitials(session.speaker.name)}
+                                                                        </AvatarFallback>
+                                                                    </Avatar>
+                                                                    <div>
+                                                                        <div className="font-medium text-sm">{session.speaker.name}</div>
+                                                                        <div className="text-xs text-muted-foreground">
+                                                                            {session.speaker.designation}{session.speaker.institution ? `, ${session.speaker.institution}` : ""}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
                                                             )}
                                                         </div>
                                                     </div>
-                                                ))}
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ))}
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                )}
                             </TabsContent>
 
                             <TabsContent value="speakers" className="space-y-6 mt-6">
@@ -365,7 +493,7 @@ export default function EventDetailPage() {
                             </TabsContent>
 
                             <TabsContent value="sponsors" className="space-y-6 mt-6">
-                                {(["platinum", "gold", "silver"] as const).map((tier) => {
+                                {(["platinum", "gold", "silver", "bronze"] as const).map((tier) => {
                                     const tierSponsors = event.sponsors.filter((s) => s.tier === tier);
                                     if (tierSponsors.length === 0) return null;
                                     const config = tierConfig[tier];
@@ -382,12 +510,12 @@ export default function EventDetailPage() {
                                             <CardContent>
                                                 <div className={cn(
                                                     "grid gap-4",
-                                                    tier === "platinum" ? "grid-cols-1 md:grid-cols-2" : "grid-cols-2 md:grid-cols-3"
+                                                    tier === "platinum" ? "grid-cols-1 md:grid-cols-2" : tier === "bronze" ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2 md:grid-cols-3"
                                                 )}>
                                                     {tierSponsors.map((sponsor) => (
                                                         <a
                                                             key={sponsor.id}
-                                                            href={sponsor.website}
+                                                            href={sponsor.website || "#"}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             className={cn(
@@ -419,9 +547,9 @@ export default function EventDetailPage() {
                     </div>
 
                     {/* Sidebar */}
-                    <div className="space-y-6">
+                    <div className="space-y-6 sticky top-24 self-start">
                         {/* Registration Card */}
-                        <Card className="sticky top-24 animate-fadeIn">
+                        <Card className="animate-fadeIn">
                             <CardHeader>
                                 <CardTitle>Register Now</CardTitle>
                                 {isAlmostFull && (
@@ -433,30 +561,23 @@ export default function EventDetailPage() {
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 {/* Pricing */}
-                                <div className="space-y-3">
-                                    {event.categories.map((category, index) => (
-                                        <div
-                                            key={index}
-                                            className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                                        >
-                                            <div>
-                                                <p className="font-medium">{category.name}</p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {category.slots - category.registered} slots left
-                                                </p>
-                                            </div>
-                                            <div className="text-right">
-                                                {category.earlyBirdPrice && (
-                                                    <p className="text-xs text-muted-foreground line-through">
-                                                        ₹{category.price.toLocaleString()}
-                                                    </p>
-                                                )}
-                                                <p className="font-bold text-primary">
-                                                    ₹{(category.earlyBirdPrice || category.price).toLocaleString()}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ))}
+                                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                                    <div>
+                                        <p className="font-medium">Registration Fee</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {slotsRemaining} slots available
+                                        </p>
+                                    </div>
+                                    <div className="text-right">
+                                        {event.earlyBirdPrice && (
+                                            <p className="text-xs text-muted-foreground line-through">
+                                                ₹{event.price.toLocaleString()}
+                                            </p>
+                                        )}
+                                        <p className="font-bold text-2xl text-primary">
+                                            ₹{(event.earlyBirdPrice || event.price).toLocaleString()}
+                                        </p>
+                                    </div>
                                 </div>
 
                                 {event.earlyBirdDeadline && (
@@ -498,30 +619,36 @@ export default function EventDetailPage() {
                                 <CardTitle className="text-base">Contact Information</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-3">
-                                <a
-                                    href={`mailto:${event.contactEmail}`}
-                                    className="flex items-center gap-3 text-sm hover:text-primary"
-                                >
-                                    <Mail className="h-4 w-4 text-muted-foreground" />
-                                    {event.contactEmail}
-                                </a>
-                                <a
-                                    href={`tel:${event.contactPhone}`}
-                                    className="flex items-center gap-3 text-sm hover:text-primary"
-                                >
-                                    <Phone className="h-4 w-4 text-muted-foreground" />
-                                    {event.contactPhone}
-                                </a>
-                                <a
-                                    href={event.website}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-3 text-sm hover:text-primary"
-                                >
-                                    <Globe className="h-4 w-4 text-muted-foreground" />
-                                    Event Website
-                                    <ExternalLink className="h-3 w-3" />
-                                </a>
+                                {event.contactEmail && (
+                                    <a
+                                        href={`mailto:${event.contactEmail}`}
+                                        className="flex items-center gap-3 text-sm hover:text-primary"
+                                    >
+                                        <Mail className="h-4 w-4 text-muted-foreground" />
+                                        {event.contactEmail}
+                                    </a>
+                                )}
+                                {event.contactPhone && (
+                                    <a
+                                        href={`tel:${event.contactPhone}`}
+                                        className="flex items-center gap-3 text-sm hover:text-primary"
+                                    >
+                                        <Phone className="h-4 w-4 text-muted-foreground" />
+                                        {event.contactPhone}
+                                    </a>
+                                )}
+                                {event.website && (
+                                    <a
+                                        href={event.website}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-3 text-sm hover:text-primary"
+                                    >
+                                        <Globe className="h-4 w-4 text-muted-foreground" />
+                                        Event Website
+                                        <ExternalLink className="h-3 w-3" />
+                                    </a>
+                                )}
                             </CardContent>
                         </Card>
                     </div>
