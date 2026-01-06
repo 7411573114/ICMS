@@ -204,15 +204,15 @@ export default function PublicEventsPage() {
                             <Link href="/events" className="text-sm font-medium text-primary">
                                 Events
                             </Link>
-                            <Link href="/speakers" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-                                Speakers
-                            </Link>
-                            <Link href="/about" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                            <Link href="/#about" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
                                 About
+                            </Link>
+                            <Link href="/#contact" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                                Contact
                             </Link>
                         </nav>
                         <div className="flex items-center gap-3">
-                            <Link href="/">
+                            <Link href="/auth/login">
                                 <Button variant="outline" size="sm" className="rounded-full">
                                     Login
                                 </Button>
@@ -245,11 +245,11 @@ export default function PublicEventsPage() {
 
                         {/* Search Bar */}
                         <div className="relative max-w-xl mx-auto animate-fadeIn" style={{ animationDelay: '0.3s' }}>
-                            <div className="relative flex items-center">
-                                <Search className="absolute left-4 h-5 w-5 text-muted-foreground" />
+                            <div className="relative">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
                                 <Input
                                     placeholder="Search events by name..."
-                                    className="pl-12 pr-4 h-14 rounded-2xl text-base bg-background/80 backdrop-blur border-border/50 shadow-lg shadow-primary/5 focus:shadow-primary/10 transition-shadow"
+                                    className="w-full pl-12 pr-4 h-14 rounded-2xl text-base bg-background/80 backdrop-blur border-border/50 shadow-lg shadow-primary/5 focus:shadow-primary/10 transition-shadow"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Bell, Search, ChevronDown, Settings, User, LogOut, HelpCircle } from "lucide-react";
+import { Bell, Search, ChevronDown, Settings, User, LogOut, HelpCircle, Loader2, Ticket, Award } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
     DropdownMenu,
@@ -15,15 +15,49 @@ import { MobileMenuButton } from "./sidebar";
 import { useUIStore } from "@/store";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { useSession, signOut } from "next-auth/react";
 
 interface HeaderProps {
     title: string;
     subtitle?: string;
 }
 
+// Format role for display
+function formatRole(role: string): string {
+    return role
+        .split("_")
+        .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
+        .join(" ");
+}
+
+// Get user initials
+function getInitials(name: string | null | undefined, email: string | null | undefined): string {
+    if (name) {
+        const parts = name.trim().split(" ");
+        if (parts.length >= 2) {
+            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+        return name.slice(0, 2).toUpperCase();
+    }
+    if (email) {
+        return email.slice(0, 2).toUpperCase();
+    }
+    return "U";
+}
+
 export function Header({ title, subtitle }: HeaderProps) {
     const { sidebarCollapsed } = useUIStore();
     const [searchOpen, setSearchOpen] = React.useState(false);
+    const { data: session, status } = useSession();
+
+    const user = session?.user;
+    const displayName = user?.name || user?.email?.split("@")[0] || "User";
+    const displayRole = user?.role ? formatRole(user.role) : "User";
+    const initials = getInitials(user?.name, user?.email);
+
+    const handleSignOut = () => {
+        signOut({ callbackUrl: "/" });
+    };
 
     return (
         <header className={cn(
@@ -124,49 +158,78 @@ export function Header({ title, subtitle }: HeaderProps) {
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <button className="flex items-center gap-2 p-1 sm:p-1.5 sm:pr-2 rounded-lg hover:bg-muted transition-colors">
-                                <Avatar className="w-8 h-8 ring-2 ring-background">
-                                    <AvatarImage src="/avatar.jpg" alt="User" />
-                                    <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
-                                        AD
-                                    </AvatarFallback>
-                                </Avatar>
-                                <div className="hidden sm:block text-left max-w-[120px]">
-                                    <p className="text-sm font-medium leading-tight truncate">Dr. Admin</p>
-                                    <p className="text-xs text-muted-foreground truncate">Super Admin</p>
-                                </div>
-                                <ChevronDown className="hidden sm:block w-4 h-4 text-muted-foreground" />
+                                {status === "loading" ? (
+                                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                                    </div>
+                                ) : (
+                                    <>
+                                        <Avatar className="w-8 h-8 ring-2 ring-background">
+                                            <AvatarImage src={user?.image || undefined} alt={displayName} />
+                                            <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
+                                                {initials}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="hidden sm:block text-left max-w-[120px]">
+                                            <p className="text-sm font-medium leading-tight truncate">{displayName}</p>
+                                            <p className="text-xs text-muted-foreground truncate">{displayRole}</p>
+                                        </div>
+                                        <ChevronDown className="hidden sm:block w-4 h-4 text-muted-foreground" />
+                                    </>
+                                )}
                             </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56">
                             <DropdownMenuLabel>
                                 <div className="flex flex-col">
-                                    <span>Dr. Admin</span>
-                                    <span className="text-xs font-normal text-muted-foreground">admin@icms.com</span>
+                                    <span>{displayName}</span>
+                                    <span className="text-xs font-normal text-muted-foreground">{user?.email || ""}</span>
                                 </div>
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem asChild>
                                 <Link href="/dashboard/profile" className="flex items-center gap-2 cursor-pointer">
                                     <User className="w-4 h-4" />
-                                    Profile Settings
+                                    My Profile
                                 </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <Link href="/dashboard/settings" className="flex items-center gap-2 cursor-pointer">
-                                    <Settings className="w-4 h-4" />
-                                    Account Settings
-                                </Link>
-                            </DropdownMenuItem>
+                            {/* Attendee specific links */}
+                            {user?.role === "ATTENDEE" && (
+                                <>
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/dashboard/my-registrations" className="flex items-center gap-2 cursor-pointer">
+                                            <Ticket className="w-4 h-4" />
+                                            My Registrations
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/dashboard/my-certificates" className="flex items-center gap-2 cursor-pointer">
+                                            <Award className="w-4 h-4" />
+                                            My Certificates
+                                        </Link>
+                                    </DropdownMenuItem>
+                                </>
+                            )}
+                            {/* Settings - only for Admin and Event Manager */}
+                            {(user?.role === "SUPER_ADMIN" || user?.role === "EVENT_MANAGER") && (
+                                <DropdownMenuItem asChild>
+                                    <Link href="/dashboard/settings" className="flex items-center gap-2 cursor-pointer">
+                                        <Settings className="w-4 h-4" />
+                                        Settings
+                                    </Link>
+                                </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem className="flex items-center gap-2 cursor-pointer lg:hidden">
                                 <HelpCircle className="w-4 h-4" />
                                 Help & Support
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem asChild className="text-destructive focus:text-destructive">
-                                <Link href="/" className="flex items-center gap-2 cursor-pointer">
-                                    <LogOut className="w-4 h-4" />
-                                    Logout
-                                </Link>
+                            <DropdownMenuItem
+                                className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive"
+                                onClick={handleSignOut}
+                            >
+                                <LogOut className="w-4 h-4" />
+                                Logout
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>

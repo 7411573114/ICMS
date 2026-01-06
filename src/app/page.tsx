@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import {
     Calendar,
     MapPin,
@@ -324,12 +325,32 @@ export default function PublicHomePage() {
         }, 1000);
     };
 
+    const [loginError, setLoginError] = useState<string | null>(null);
+
     const handleEmailLogin = async () => {
         if (!email || !password) return;
         setIsLoading(true);
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        setIsLoading(false);
-        router.push("/dashboard");
+        setLoginError(null);
+
+        try {
+            const result = await signIn("credentials", {
+                email,
+                password,
+                redirect: false,
+            });
+
+            if (result?.error) {
+                setLoginError("Invalid email or password");
+            } else {
+                setIsAuthModalOpen(false);
+                router.push("/dashboard");
+                router.refresh();
+            }
+        } catch {
+            setLoginError("An error occurred. Please try again.");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleRegister = async () => {
@@ -348,6 +369,7 @@ export default function PublicHomePage() {
         setEmail("");
         setPassword("");
         setName("");
+        setLoginError(null);
     };
 
     const getSlotsInfo = (event: DisplayEvent) => {
@@ -400,29 +422,23 @@ export default function PublicHomePage() {
                         </nav>
 
                         <div className="flex items-center gap-2 lg:gap-3">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="hidden sm:flex text-sm rounded-full"
-                                onClick={() => {
-                                    resetAuthState();
-                                    setAuthTab("login");
-                                    setIsAuthModalOpen(true);
-                                }}
-                            >
-                                Sign In
-                            </Button>
-                            <Button
-                                size="sm"
-                                className="gradient-medical text-white hover:opacity-90 shadow-md hover:shadow-lg transition-all duration-300 text-sm px-5 lg:px-6 rounded-full"
-                                onClick={() => {
-                                    resetAuthState();
-                                    setAuthTab("register");
-                                    setIsAuthModalOpen(true);
-                                }}
-                            >
-                                Register
-                            </Button>
+                            <Link href="/auth/login">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="hidden sm:flex text-sm rounded-full"
+                                >
+                                    Sign In
+                                </Button>
+                            </Link>
+                            <Link href="/events">
+                                <Button
+                                    size="sm"
+                                    className="gradient-medical text-white hover:opacity-90 shadow-md hover:shadow-lg transition-all duration-300 text-sm px-5 lg:px-6 rounded-full"
+                                >
+                                    Browse Events
+                                </Button>
+                            </Link>
                             <Button
                                 variant="ghost"
                                 size="icon"
@@ -461,18 +477,14 @@ export default function PublicHomePage() {
                                         {item}
                                     </button>
                                 ))}
-                                <Button
-                                    variant="ghost"
-                                    className="justify-start mt-2 rounded-xl"
-                                    onClick={() => {
-                                        setMobileMenuOpen(false);
-                                        resetAuthState();
-                                        setAuthTab("login");
-                                        setIsAuthModalOpen(true);
-                                    }}
-                                >
-                                    Sign In
-                                </Button>
+                                <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)}>
+                                    <Button
+                                        variant="ghost"
+                                        className="w-full justify-start mt-2 rounded-xl"
+                                    >
+                                        Sign In
+                                    </Button>
+                                </Link>
                             </nav>
                         </div>
                     )}
@@ -563,7 +575,7 @@ export default function PublicHomePage() {
                             data-scroll-delay="2"
                             className="relative"
                         >
-                            <div className="relative rounded-[2.5rem] overflow-hidden bg-white shadow-2xl">
+                            <div className="relative rounded-[2.5rem] overflow-hidden bg-white/10 backdrop-blur-md border border-white/20 shadow-2xl">
                                 {featuredEvents.map((event, index) => (
                                     <div
                                         key={event.id}
@@ -603,41 +615,41 @@ export default function PublicHomePage() {
                                         {/* Event Details */}
                                         <div className="p-6 lg:p-8 space-y-4">
                                             <div>
-                                                <h3 className="text-xl lg:text-2xl font-bold text-foreground line-clamp-2 mb-2">
+                                                <h3 className="text-xl lg:text-2xl font-bold text-white line-clamp-2 mb-2">
                                                     {event.title}
                                                 </h3>
-                                                <p className="text-sm text-muted-foreground line-clamp-2">
+                                                <p className="text-sm text-white/70 line-clamp-2">
                                                     {event.shortDescription}
                                                 </p>
                                             </div>
 
-                                            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                                                <span className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded-full">
-                                                    <Calendar className="h-4 w-4 text-primary" />
+                                            <div className="flex flex-wrap gap-4 text-sm text-white/80">
+                                                <span className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full">
+                                                    <Calendar className="h-4 w-4 text-cyan-300" />
                                                     {event.date}
                                                 </span>
-                                                <span className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded-full">
-                                                    <MapPin className="h-4 w-4 text-primary" />
+                                                <span className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full">
+                                                    <MapPin className="h-4 w-4 text-cyan-300" />
                                                     {event.location.split(",")[0]}
                                                 </span>
                                             </div>
 
-                                            <div className="flex items-center justify-between pt-5 border-t">
+                                            <div className="flex items-center justify-between pt-5 border-t border-white/20">
                                                 <div>
                                                     {event.earlyBirdPrice && (
-                                                        <span className="text-sm text-muted-foreground line-through mr-2">
+                                                        <span className="text-sm text-white/50 line-through mr-2">
                                                             ₹{event.price.toLocaleString()}
                                                         </span>
                                                     )}
-                                                    <span className="text-2xl lg:text-3xl font-bold text-primary">
+                                                    <span className="text-2xl lg:text-3xl font-bold text-cyan-300">
                                                         ₹{(event.earlyBirdPrice || event.price).toLocaleString()}
                                                     </span>
                                                     {event.earlyBirdPrice && (
-                                                        <p className="text-xs text-green-600 font-medium mt-1">Early bird pricing</p>
+                                                        <p className="text-xs text-emerald-400 font-medium mt-1">Early bird pricing</p>
                                                     )}
                                                 </div>
                                                 <Link href={`/events/${event.id}/register`}>
-                                                    <Button className="gradient-medical text-white gap-2 shadow-lg hover:shadow-xl transition-all duration-300 rounded-full px-6">
+                                                    <Button className="bg-white text-primary hover:bg-white/90 gap-2 shadow-lg hover:shadow-xl transition-all duration-300 rounded-full px-6">
                                                         <Ticket className="h-4 w-4" />
                                                         Register Now
                                                     </Button>
@@ -1243,17 +1255,14 @@ export default function PublicHomePage() {
                             <p className="text-muted-foreground mb-6 text-sm">
                                 Medical Conference Management System
                             </p>
-                            <Button
-                                size="lg"
-                                className="gradient-medical text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-full px-8"
-                                onClick={() => {
-                                    resetAuthState();
-                                    setAuthTab("register");
-                                    setIsAuthModalOpen(true);
-                                }}
-                            >
-                                Register for Events
-                            </Button>
+                            <Link href="/events">
+                                <Button
+                                    size="lg"
+                                    className="gradient-medical text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-full px-8"
+                                >
+                                    Browse Events
+                                </Button>
+                            </Link>
                         </div>
                     </div>
                 </div>
@@ -1338,214 +1347,6 @@ export default function PublicHomePage() {
                 </div>
             </footer>
 
-            {/* Auth Modal */}
-            <Dialog open={isAuthModalOpen} onOpenChange={(open) => {
-                setIsAuthModalOpen(open);
-                if (!open) resetAuthState();
-            }}>
-                <DialogContent className="sm:max-w-md rounded-3xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl">
-                            {authTab === "login" ? "Welcome Back" : "Create Account"}
-                        </DialogTitle>
-                        <DialogDescription>
-                            {authTab === "login"
-                                ? "Sign in to access your registrations and certificates"
-                                : "Register to book events and earn CME credits"}
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <Tabs value={authTab} onValueChange={(v) => { setAuthTab(v); resetAuthState(); }}>
-                        <TabsList className="grid w-full grid-cols-2 rounded-full p-1">
-                            <TabsTrigger value="login" className="rounded-full">Login</TabsTrigger>
-                            <TabsTrigger value="register" className="rounded-full">Register</TabsTrigger>
-                        </TabsList>
-
-                        <TabsContent value="login" className="space-y-4 mt-4">
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="phone">Mobile Number</Label>
-                                    <div className="flex gap-2">
-                                        <Input
-                                            id="phone"
-                                            type="tel"
-                                            placeholder="Enter 10-digit mobile number"
-                                            value={phone}
-                                            onChange={(e) => setPhone(e.target.value)}
-                                            disabled={otpSent}
-                                            className="flex-1 rounded-xl"
-                                        />
-                                        {!otpSent && (
-                                            <Button
-                                                onClick={handleSendOtp}
-                                                disabled={phone.length < 10 || isLoading}
-                                                className="rounded-xl"
-                                            >
-                                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send OTP"}
-                                            </Button>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {otpSent && !otpVerified && (
-                                    <div className="space-y-2 animate-fadeIn">
-                                        <Label htmlFor="otp">Enter OTP</Label>
-                                        <div className="flex gap-2">
-                                            <Input
-                                                id="otp"
-                                                type="text"
-                                                placeholder="Enter 6-digit OTP"
-                                                value={otp}
-                                                onChange={(e) => setOtp(e.target.value)}
-                                                maxLength={6}
-                                                className="flex-1 rounded-xl"
-                                            />
-                                            <Button onClick={handleVerifyOtp} disabled={otp.length < 4 || isLoading} className="rounded-xl">
-                                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify"}
-                                            </Button>
-                                        </div>
-                                        <p className="text-xs text-muted-foreground">
-                                            OTP sent to +91 {phone}.
-                                            <button className="text-primary ml-1 hover:underline" onClick={() => setOtpSent(false)}>
-                                                Change number
-                                            </button>
-                                        </p>
-                                    </div>
-                                )}
-
-                                {otpVerified && (
-                                    <div className="p-4 rounded-2xl bg-green-50 text-green-700 text-center animate-fadeIn">
-                                        <CheckCircle2 className="h-8 w-8 mx-auto mb-2" />
-                                        <p className="font-medium">Login Successful!</p>
-                                        <p className="text-sm">Redirecting...</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="relative">
-                                <div className="absolute inset-0 flex items-center">
-                                    <div className="w-full border-t"></div>
-                                </div>
-                                <div className="relative flex justify-center text-xs uppercase">
-                                    <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
-                                </div>
-                            </div>
-
-                            <div className="space-y-3">
-                                <div className="space-y-2">
-                                    <Label htmlFor="email">Email (Admin)</Label>
-                                    <Input
-                                        id="email"
-                                        type="email"
-                                        placeholder="admin@medconf.com"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        className="rounded-xl"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="password">Password</Label>
-                                    <Input
-                                        id="password"
-                                        type="password"
-                                        placeholder="Enter password"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        className="rounded-xl"
-                                    />
-                                </div>
-                                <Button
-                                    className="w-full rounded-xl"
-                                    variant="outline"
-                                    onClick={handleEmailLogin}
-                                    disabled={!email || !password || isLoading}
-                                >
-                                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
-                                    Admin Login
-                                </Button>
-                            </div>
-                        </TabsContent>
-
-                        <TabsContent value="register" className="space-y-4 mt-4">
-                            {!otpSent ? (
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="reg-name">Full Name</Label>
-                                        <Input
-                                            id="reg-name"
-                                            type="text"
-                                            placeholder="Dr. John Smith"
-                                            value={name}
-                                            onChange={(e) => setName(e.target.value)}
-                                            className="rounded-xl"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="reg-phone">Mobile Number</Label>
-                                        <Input
-                                            id="reg-phone"
-                                            type="tel"
-                                            placeholder="Enter 10-digit mobile number"
-                                            value={phone}
-                                            onChange={(e) => setPhone(e.target.value)}
-                                            className="rounded-xl"
-                                        />
-                                    </div>
-                                    <Button
-                                        className="w-full gradient-medical text-white rounded-xl"
-                                        onClick={handleRegister}
-                                        disabled={!name || phone.length < 10 || isLoading}
-                                    >
-                                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Smartphone className="h-4 w-4 mr-2" />}
-                                        Send OTP & Register
-                                    </Button>
-                                </div>
-                            ) : !otpVerified ? (
-                                <div className="space-y-4 animate-fadeIn">
-                                    <div className="p-4 rounded-2xl bg-muted/50 text-center">
-                                        <Smartphone className="h-8 w-8 mx-auto mb-2 text-primary" />
-                                        <p className="font-medium">OTP Sent!</p>
-                                        <p className="text-sm text-muted-foreground">Enter the 6-digit code sent to +91 {phone}</p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="reg-otp">Enter OTP</Label>
-                                        <Input
-                                            id="reg-otp"
-                                            type="text"
-                                            placeholder="Enter 6-digit OTP"
-                                            value={otp}
-                                            onChange={(e) => setOtp(e.target.value)}
-                                            maxLength={6}
-                                            className="text-center text-lg tracking-widest rounded-xl"
-                                        />
-                                    </div>
-                                    <Button
-                                        className="w-full gradient-medical text-white rounded-xl"
-                                        onClick={handleVerifyOtp}
-                                        disabled={otp.length < 4 || isLoading}
-                                    >
-                                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
-                                        Verify & Complete Registration
-                                    </Button>
-                                    <button
-                                        className="text-sm text-muted-foreground hover:text-foreground w-full text-center"
-                                        onClick={() => setOtpSent(false)}
-                                    >
-                                        ← Change details
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="p-6 rounded-2xl bg-green-50 text-green-700 text-center animate-fadeIn">
-                                    <CheckCircle2 className="h-12 w-12 mx-auto mb-3" />
-                                    <p className="font-bold text-lg">Registration Successful!</p>
-                                    <p className="text-sm mt-1">Welcome, {name}!</p>
-                                    <p className="text-sm mt-2">Redirecting to events...</p>
-                                </div>
-                            )}
-                        </TabsContent>
-                    </Tabs>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }

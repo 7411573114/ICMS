@@ -60,6 +60,7 @@ import { validateEventForPublish, calculateEventStatus } from "@/lib/event-valid
 import { EVENT_TYPES, EVENT_CATEGORIES, EVENT_STATUSES } from "@/lib/event-constants";
 import { eventsService, Event } from "@/services/events";
 import { useConfirmDialog, useAlertDialog } from "@/components/ui/confirm-dialog";
+import { usePermissions } from "@/hooks/use-permissions";
 
 // Display event type
 interface DisplayEvent {
@@ -103,6 +104,15 @@ export default function EventsPage() {
 
     const { confirm, ConfirmDialog } = useConfirmDialog();
     const { alert, AlertDialog } = useAlertDialog();
+
+    // RBAC Permissions
+    const { can } = usePermissions();
+    const canCreateEvent = can("events.create");
+    const canEditEvent = can("events.edit");
+    const canDeleteEvent = can("events.delete");
+    const canCreateRegistration = can("registrations.create");
+    const canViewRegistrations = can("registrations.view");
+    const canIssueCertificates = can("certificates.issue");
 
     // Fetch events from API
     useEffect(() => {
@@ -394,12 +404,14 @@ export default function EventsPage() {
                             </div>
                         </div>
 
-                        <Link href="/dashboard/events/create">
-                            <Button className="gradient-medical text-white hover:opacity-90 w-full sm:w-auto">
-                                <Plus className="w-4 h-4 mr-2" />
-                                Create Event
-                            </Button>
-                        </Link>
+                        {canCreateEvent && (
+                            <Link href="/dashboard/events/create">
+                                <Button className="gradient-medical text-white hover:opacity-90 w-full sm:w-auto">
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    Create Event
+                                </Button>
+                            </Link>
+                        )}
                     </div>
 
                     {/* Desktop Filters */}
@@ -564,7 +576,7 @@ export default function EventsPage() {
                                                         View Details
                                                     </Link>
                                                 </DropdownMenuItem>
-                                                {(event.registrations === 0 && !event.isPublished) && (
+                                                {canEditEvent && (event.registrations === 0 && !event.isPublished) && (
                                                     <DropdownMenuItem asChild>
                                                         <Link href={`/dashboard/events/${event.id}/edit`}>
                                                             <Edit className="mr-2 h-4 w-4" />
@@ -572,7 +584,7 @@ export default function EventsPage() {
                                                         </Link>
                                                     </DropdownMenuItem>
                                                 )}
-                                                {!event.isPublished && (
+                                                {canEditEvent && !event.isPublished && (
                                                     <DropdownMenuItem
                                                         onClick={() => handlePublishEvent(event.id, event.title)}
                                                     >
@@ -580,16 +592,18 @@ export default function EventsPage() {
                                                         Publish Event
                                                     </DropdownMenuItem>
                                                 )}
-                                                <DropdownMenuItem>
-                                                    <Copy className="mr-2 h-4 w-4" />
-                                                    Duplicate
-                                                </DropdownMenuItem>
+                                                {canCreateEvent && (
+                                                    <DropdownMenuItem>
+                                                        <Copy className="mr-2 h-4 w-4" />
+                                                        Duplicate
+                                                    </DropdownMenuItem>
+                                                )}
                                                 <DropdownMenuItem>
                                                     <QrCode className="mr-2 h-4 w-4" />
                                                     Generate QR Code
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
-                                                {event.status !== "COMPLETED" && event.status !== "DRAFT" && (
+                                                {canCreateRegistration && event.status !== "COMPLETED" && event.status !== "DRAFT" && (
                                                     <DropdownMenuItem asChild>
                                                         <Link href={`/dashboard/registrations?event=${event.id}&action=add`}>
                                                             <UserPlus className="mr-2 h-4 w-4" />
@@ -597,7 +611,7 @@ export default function EventsPage() {
                                                         </Link>
                                                     </DropdownMenuItem>
                                                 )}
-                                                {event.status !== "DRAFT" && (
+                                                {canViewRegistrations && event.status !== "DRAFT" && (
                                                     <DropdownMenuItem asChild>
                                                         <Link href={`/dashboard/registrations?event=${event.id}`}>
                                                             <Users className="mr-2 h-4 w-4" />
@@ -605,13 +619,13 @@ export default function EventsPage() {
                                                         </Link>
                                                     </DropdownMenuItem>
                                                 )}
-                                                {event.status !== "DRAFT" && (
+                                                {canViewRegistrations && event.status !== "DRAFT" && (
                                                     <DropdownMenuItem>
                                                         <Mail className="mr-2 h-4 w-4" />
                                                         Email Attendees
                                                     </DropdownMenuItem>
                                                 )}
-                                                {event.status === "COMPLETED" && (
+                                                {canIssueCertificates && event.status === "COMPLETED" && (
                                                     <DropdownMenuItem>
                                                         <Award className="mr-2 h-4 w-4" />
                                                         Generate Certificates
@@ -623,7 +637,7 @@ export default function EventsPage() {
                                                         Export Report
                                                     </DropdownMenuItem>
                                                 )}
-                                                {event.registrations === 0 && (
+                                                {canDeleteEvent && event.registrations === 0 && (
                                                     <>
                                                         <DropdownMenuSeparator />
                                                         <DropdownMenuItem
@@ -791,7 +805,7 @@ export default function EventsPage() {
                                                                     View Details
                                                                 </Link>
                                                             </DropdownMenuItem>
-                                                            {(event.registrations === 0 && !event.isPublished) && (
+                                                            {canEditEvent && (event.registrations === 0 && !event.isPublished) && (
                                                                 <DropdownMenuItem asChild>
                                                                     <Link href={`/dashboard/events/${event.id}/edit`}>
                                                                         <Edit className="mr-2 h-4 w-4" />
@@ -799,7 +813,7 @@ export default function EventsPage() {
                                                                     </Link>
                                                                 </DropdownMenuItem>
                                                             )}
-                                                            {!event.isPublished && (
+                                                            {canEditEvent && !event.isPublished && (
                                                                 <DropdownMenuItem
                                                                     onClick={() => handlePublishEvent(event.id, event.title)}
                                                                 >
@@ -807,16 +821,18 @@ export default function EventsPage() {
                                                                     Publish Event
                                                                 </DropdownMenuItem>
                                                             )}
-                                                            <DropdownMenuItem>
-                                                                <Copy className="mr-2 h-4 w-4" />
-                                                                Duplicate
-                                                            </DropdownMenuItem>
+                                                            {canCreateEvent && (
+                                                                <DropdownMenuItem>
+                                                                    <Copy className="mr-2 h-4 w-4" />
+                                                                    Duplicate
+                                                                </DropdownMenuItem>
+                                                            )}
                                                             <DropdownMenuItem>
                                                                 <QrCode className="mr-2 h-4 w-4" />
                                                                 Generate QR Code
                                                             </DropdownMenuItem>
                                                             <DropdownMenuSeparator />
-                                                            {event.status !== "COMPLETED" && event.status !== "DRAFT" && (
+                                                            {canCreateRegistration && event.status !== "COMPLETED" && event.status !== "DRAFT" && (
                                                                 <DropdownMenuItem asChild>
                                                                     <Link href={`/dashboard/registrations?event=${event.id}&action=add`}>
                                                                         <UserPlus className="mr-2 h-4 w-4" />
@@ -824,7 +840,7 @@ export default function EventsPage() {
                                                                     </Link>
                                                                 </DropdownMenuItem>
                                                             )}
-                                                            {event.status !== "DRAFT" && (
+                                                            {canViewRegistrations && event.status !== "DRAFT" && (
                                                                 <DropdownMenuItem asChild>
                                                                     <Link href={`/dashboard/registrations?event=${event.id}`}>
                                                                         <Users className="mr-2 h-4 w-4" />
@@ -832,13 +848,13 @@ export default function EventsPage() {
                                                                     </Link>
                                                                 </DropdownMenuItem>
                                                             )}
-                                                            {event.status !== "DRAFT" && (
+                                                            {canViewRegistrations && event.status !== "DRAFT" && (
                                                                 <DropdownMenuItem>
                                                                     <Mail className="mr-2 h-4 w-4" />
                                                                     Email Attendees
                                                                 </DropdownMenuItem>
                                                             )}
-                                                            {event.status === "COMPLETED" && (
+                                                            {canIssueCertificates && event.status === "COMPLETED" && (
                                                                 <DropdownMenuItem>
                                                                     <Award className="mr-2 h-4 w-4" />
                                                                     Generate Certificates
@@ -850,7 +866,7 @@ export default function EventsPage() {
                                                                     Export Report
                                                                 </DropdownMenuItem>
                                                             )}
-                                                            {event.registrations === 0 && (
+                                                            {canDeleteEvent && event.registrations === 0 && (
                                                                 <>
                                                                     <DropdownMenuSeparator />
                                                                     <DropdownMenuItem

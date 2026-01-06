@@ -16,7 +16,7 @@ async function main() {
 
   const superAdmin = await prisma.user.upsert({
     where: { email: "admin@icms.com" },
-    update: {},
+    update: { password: adminPassword, isActive: true },
     create: {
       email: "admin@icms.com",
       password: adminPassword,
@@ -31,7 +31,7 @@ async function main() {
 
   const eventManager = await prisma.user.upsert({
     where: { email: "events@icms.com" },
-    update: {},
+    update: { password: userPassword, isActive: true },
     create: {
       email: "events@icms.com",
       password: userPassword,
@@ -46,7 +46,7 @@ async function main() {
 
   const registrationManager = await prisma.user.upsert({
     where: { email: "registrations@icms.com" },
-    update: {},
+    update: { password: userPassword, isActive: true },
     create: {
       email: "registrations@icms.com",
       password: userPassword,
@@ -61,7 +61,7 @@ async function main() {
 
   const certificateManager = await prisma.user.upsert({
     where: { email: "certificates@icms.com" },
-    update: {},
+    update: { password: userPassword, isActive: true },
     create: {
       email: "certificates@icms.com",
       password: userPassword,
@@ -76,7 +76,7 @@ async function main() {
 
   const attendee = await prisma.user.upsert({
     where: { email: "attendee@icms.com" },
-    update: {},
+    update: { password: userPassword, isActive: true },
     create: {
       email: "attendee@icms.com",
       password: userPassword,

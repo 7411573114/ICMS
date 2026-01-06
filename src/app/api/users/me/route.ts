@@ -70,9 +70,23 @@ export const PUT = withErrorHandler(async (request: NextRequest) => {
     return Errors.validationError(parsed.error);
   }
 
+  // Also update the name field based on firstName/lastName if provided
+  let updateData: Record<string, unknown> = { ...parsed.data };
+  if (parsed.data.firstName !== undefined || parsed.data.lastName !== undefined) {
+    const currentUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { firstName: true, lastName: true },
+    });
+    const firstName = parsed.data.firstName ?? currentUser?.firstName ?? "";
+    const lastName = parsed.data.lastName ?? currentUser?.lastName ?? "";
+    if (firstName || lastName) {
+      updateData.name = `${firstName} ${lastName}`.trim();
+    }
+  }
+
   const user = await prisma.user.update({
     where: { id: session.user.id },
-    data: parsed.data,
+    data: updateData as Parameters<typeof prisma.user.update>[0]["data"],
     select: {
       id: true,
       email: true,
@@ -82,7 +96,16 @@ export const PUT = withErrorHandler(async (request: NextRequest) => {
       phone: true,
       avatar: true,
       role: true,
+      isActive: true,
+      emailVerified: true,
+      notifyEmail: true,
+      notifyRegistrations: true,
+      notifyPayments: true,
+      createdAt: true,
       updatedAt: true,
+      _count: {
+        select: { registrations: true },
+      },
     },
   });
 

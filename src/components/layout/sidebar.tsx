@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store";
+import { useSession, signOut } from "next-auth/react";
 import {
     LayoutDashboard,
     Calendar,
@@ -19,55 +20,98 @@ import {
     Brain,
     Menu,
     X,
+    User,
 } from "lucide-react";
 
+// Define user roles
+type UserRole = "SUPER_ADMIN" | "EVENT_MANAGER" | "REGISTRATION_MANAGER" | "CERTIFICATE_MANAGER" | "ATTENDEE";
+
+// Menu items with role-based access
 const menuItems = [
     {
         title: "Dashboard",
         href: "/dashboard",
         icon: LayoutDashboard,
+        roles: ["SUPER_ADMIN", "EVENT_MANAGER", "REGISTRATION_MANAGER", "CERTIFICATE_MANAGER", "ATTENDEE"] as UserRole[],
     },
     {
         title: "Events",
         href: "/dashboard/events",
         icon: Calendar,
+        roles: ["SUPER_ADMIN", "EVENT_MANAGER"] as UserRole[],
     },
     {
         title: "Registrations",
         href: "/dashboard/registrations",
         icon: Users,
+        roles: ["SUPER_ADMIN", "EVENT_MANAGER", "REGISTRATION_MANAGER"] as UserRole[],
+    },
+    {
+        title: "My Registrations",
+        href: "/dashboard/my-registrations",
+        icon: Users,
+        roles: ["ATTENDEE"] as UserRole[],
     },
     {
         title: "Speakers",
         href: "/dashboard/speakers",
         icon: Mic2,
+        roles: ["SUPER_ADMIN", "EVENT_MANAGER"] as UserRole[],
     },
     {
         title: "Certificates",
         href: "/dashboard/certificates",
         icon: Award,
+        roles: ["SUPER_ADMIN", "CERTIFICATE_MANAGER"] as UserRole[],
+    },
+    {
+        title: "My Certificates",
+        href: "/dashboard/my-certificates",
+        icon: Award,
+        roles: ["ATTENDEE"] as UserRole[],
     },
     {
         title: "Sponsors",
         href: "/dashboard/sponsors",
         icon: Building2,
+        roles: ["SUPER_ADMIN", "EVENT_MANAGER"] as UserRole[],
     },
     {
         title: "User Management",
         href: "/dashboard/users",
         icon: UserCog,
+        roles: ["SUPER_ADMIN"] as UserRole[],
+    },
+    {
+        title: "Profile",
+        href: "/dashboard/profile",
+        icon: User,
+        roles: ["SUPER_ADMIN", "EVENT_MANAGER", "REGISTRATION_MANAGER", "CERTIFICATE_MANAGER", "ATTENDEE"] as UserRole[],
     },
     {
         title: "Settings",
         href: "/dashboard/settings",
         icon: Settings,
+        roles: ["SUPER_ADMIN", "EVENT_MANAGER"] as UserRole[],
     },
 ];
 
 export function Sidebar() {
     const pathname = usePathname();
     const { sidebarCollapsed, toggleSidebarCollapse, sidebarOpen, setSidebarOpen } = useUIStore();
+    const { data: session } = useSession();
     const [mounted, setMounted] = useState(false);
+
+    // Get user role from session
+    const userRole = (session?.user?.role as UserRole) || "ATTENDEE";
+
+    // Filter menu items based on user role
+    const filteredMenuItems = menuItems.filter((item) => item.roles.includes(userRole));
+
+    // Handle logout
+    const handleLogout = () => {
+        signOut({ callbackUrl: "/" });
+    };
 
     // Prevent hydration mismatch by only applying client state after mount
     useEffect(() => {
@@ -154,7 +198,7 @@ export function Sidebar() {
                 {/* Navigation */}
                 <nav className="flex-1 py-4 px-3 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
                     <ul className="space-y-1">
-                        {menuItems.map((item) => {
+                        {filteredMenuItems.map((item) => {
                             const isActive = pathname === item.href ||
                                 (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
                             return (
@@ -220,11 +264,11 @@ export function Sidebar() {
                     </button>
 
                     {/* Logout */}
-                    <Link
-                        href="/"
+                    <button
+                        onClick={handleLogout}
                         className={cn(
-                            "flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/60 hover:text-red-300 hover:bg-red-500/10 transition-all",
-                            sidebarCollapsed && "lg:justify-center lg:px-0"
+                            "flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/60 hover:text-red-300 hover:bg-red-500/10 transition-all w-full",
+                            isCollapsed && "lg:justify-center lg:px-0"
                         )}
                         title={isCollapsed ? "Logout" : undefined}
                     >
@@ -235,7 +279,7 @@ export function Sidebar() {
                         )}>
                             Logout
                         </span>
-                    </Link>
+                    </button>
                 </div>
             </aside>
         </>

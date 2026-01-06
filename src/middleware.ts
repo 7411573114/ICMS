@@ -14,6 +14,9 @@ const roleRoutes: Record<string, string[]> = {
   "/api/users": ["SUPER_ADMIN"],
 };
 
+// Routes that are exceptions to role-based access (accessible by any authenticated user)
+const roleExceptions = ["/api/users/me", "/api/users/me/registrations", "/api/users/me/certificates"];
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -53,20 +56,27 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Check role-based access
-  for (const [route, allowedRoles] of Object.entries(roleRoutes)) {
-    if (pathname.startsWith(route)) {
-      if (!allowedRoles.includes(session.user.role)) {
-        // For API routes, return 403
-        if (pathname.startsWith("/api/")) {
-          return NextResponse.json(
-            { success: false, error: { code: "FORBIDDEN", message: "Access denied" } },
-            { status: 403 }
-          );
-        }
+  // Check if route is an exception to role-based access
+  const isRoleException = roleExceptions.some(
+    (route) => pathname === route || pathname.startsWith(route + "/")
+  );
 
-        // For pages, redirect to dashboard
-        return NextResponse.redirect(new URL("/dashboard", request.url));
+  // Check role-based access (skip if it's an exception)
+  if (!isRoleException) {
+    for (const [route, allowedRoles] of Object.entries(roleRoutes)) {
+      if (pathname.startsWith(route)) {
+        if (!allowedRoles.includes(session.user.role)) {
+          // For API routes, return 403
+          if (pathname.startsWith("/api/")) {
+            return NextResponse.json(
+              { success: false, error: { code: "FORBIDDEN", message: "Access denied" } },
+              { status: 403 }
+            );
+          }
+
+          // For pages, redirect to dashboard
+          return NextResponse.redirect(new URL("/dashboard", request.url));
+        }
       }
     }
   }
