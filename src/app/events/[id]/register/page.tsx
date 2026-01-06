@@ -125,7 +125,7 @@ export default function RegisterPage() {
         async function fetchEvent() {
             try {
                 setLoading(true);
-                const response = await eventsService.getById(eventId);
+                const response = await eventsService.getPublicById(eventId);
                 if (response.success && response.data) {
                     const event = response.data;
                     const startDate = new Date(event.startDate);

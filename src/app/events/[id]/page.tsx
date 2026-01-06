@@ -110,7 +110,7 @@ export default function EventDetailPage() {
             try {
                 setLoading(true);
                 setError(null);
-                const response = await eventsService.getById(eventId);
+                const response = await eventsService.getPublicById(eventId);
 
                 if (response.success && response.data) {
                     const apiEvent = response.data;

@@ -226,7 +226,13 @@ export const eventsService = {
     api.get<Event[]>("/api/events/public", filters as Record<string, string | number | boolean>),
 
   /**
-   * Get single event by ID
+   * Get single public event by ID (no auth required)
+   */
+  getPublicById: (id: string) =>
+    api.get<Event & { eventSpeakers: EventSpeaker[]; eventSessions: EventSession[]; eventSponsors: EventSponsor[] }>(`/api/events/public/${id}`),
+
+  /**
+   * Get single event by ID (requires auth)
    */
   getById: (id: string) =>
     api.get<Event & { eventSpeakers: EventSpeaker[]; eventSessions: EventSession[]; eventSponsors: EventSponsor[] }>(`/api/events/${id}`),
