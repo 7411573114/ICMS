@@ -44,8 +44,8 @@ export async function GET(
           },
           orderBy: { tier: "asc" },
         },
-        sessions: {
-          orderBy: [{ date: "asc" }, { startTime: "asc" }],
+        eventSessions: {
+          orderBy: [{ sessionDate: "asc" }, { startTime: "asc" }],
         },
         _count: {
           select: {
