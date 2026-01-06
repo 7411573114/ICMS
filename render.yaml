@@ -6,7 +6,7 @@ services:
   - type: web
     name: icms
     runtime: node
-    plan: starter # Can be: free, starter, standard, pro
+    plan: free # free, starter, standard, pro (upgrade later for always-on)
     buildCommand: npm ci && npx prisma generate && npm run build
     preDeployCommand: npx prisma migrate deploy
     startCommand: npm run start
@@ -51,7 +51,7 @@ services:
 databases:
   # PostgreSQL Database
   - name: icms-db
-    plan: starter # Can be: free, starter, standard, pro
+    plan: free # free tier: 1GB, 97 days expiry (upgrade later)
     databaseName: icms
     user: icms_user
     ipAllowList: [] # Allow connections from Render services only
