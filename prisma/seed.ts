@@ -233,14 +233,17 @@ async function main() {
   // ============================================================================
   console.log("Creating events...");
 
-  const today = new Date();
+  // Fixed demo dates
+  const tomorrow = new Date("2026-01-07T00:00:00");
+  const dayAfterTomorrow = new Date("2026-01-08T00:00:00");
+
   const futureDate = (days: number) => {
-    const date = new Date(today);
+    const date = new Date(tomorrow);
     date.setDate(date.getDate() + days);
     return date;
   };
   const pastDate = (days: number) => {
-    const date = new Date(today);
+    const date = new Date(tomorrow);
     date.setDate(date.getDate() - days);
     return date;
   };
@@ -256,8 +259,8 @@ async function main() {
           "Premier conference bringing together leading experts in neurostimulation technologies.",
         description:
           "Join us for the most comprehensive neurostimulation conference in India. This two-day summit features keynote presentations, hands-on workshops, and networking opportunities with pioneers in the field of deep brain stimulation, spinal cord stimulation, and emerging neuromodulation technologies.",
-        startDate: futureDate(15),
-        endDate: futureDate(16),
+        startDate: dayAfterTomorrow, // Jan 8, 2026
+        endDate: futureDate(2), // Jan 9, 2026
         startTime: "09:00",
         endTime: "17:00",
         timezone: "Asia/Kolkata",
@@ -269,8 +272,8 @@ async function main() {
         capacity: 200,
         price: 5000,
         earlyBirdPrice: 4000,
-        earlyBirdDeadline: futureDate(7),
-        registrationDeadline: futureDate(12),
+        earlyBirdDeadline: tomorrow,
+        registrationDeadline: dayAfterTomorrow,
         currency: "INR",
         status: "UPCOMING",
         type: "CONFERENCE",
@@ -320,17 +323,17 @@ async function main() {
       },
     }),
     prisma.event.upsert({
-      where: { slug: "epilepsy-management-cme-2025" },
+      where: { slug: "epilepsy-management-cme-2026" },
       update: {},
       create: {
         title: "Epilepsy Management CME Session",
-        slug: "epilepsy-management-cme-2025",
+        slug: "epilepsy-management-cme-2026",
         shortDescription:
           "Update on latest advances in epilepsy diagnosis and treatment.",
         description:
           "A comprehensive CME session covering the latest guidelines in epilepsy management, new anti-epileptic drugs, and surgical options for drug-resistant epilepsy.",
-        startDate: futureDate(5),
-        endDate: futureDate(5),
+        startDate: tomorrow, // Jan 7, 2026
+        endDate: tomorrow, // Jan 7, 2026
         startTime: "14:00",
         endTime: "18:00",
         timezone: "Asia/Kolkata",
