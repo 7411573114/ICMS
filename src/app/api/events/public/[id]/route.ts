@@ -1,13 +1,13 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { successResponse, Errors, withErrorHandler } from "@/lib/api-utils";
+import { successResponse, Errors } from "@/lib/api-utils";
 
 // GET /api/events/public/[id] - Get single public event (no auth required)
-export const GET = withErrorHandler(
-  async (
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-  ) => {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
     const { id } = await params;
 
     const event = await prisma.event.findFirst({
@@ -61,5 +61,11 @@ export const GET = withErrorHandler(
     }
 
     return successResponse(event);
+  } catch (error) {
+    console.error("Error fetching public event:", error);
+    return NextResponse.json(
+      { success: false, error: { code: "INTERNAL_ERROR", message: "Failed to fetch event" } },
+      { status: 500 }
+    );
   }
-);
+}
