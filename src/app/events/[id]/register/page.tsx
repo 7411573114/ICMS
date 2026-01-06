@@ -352,78 +352,92 @@ export default function RegisterPage() {
 <head>
     <title>Registration Receipt - ${eventData.title}</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px; }
-        .header { text-align: center; border-bottom: 2px solid #0d9488; padding-bottom: 20px; margin-bottom: 30px; }
-        .logo { font-size: 24px; font-weight: bold; color: #0d9488; }
-        .title { font-size: 20px; margin-top: 10px; }
-        .section { margin-bottom: 25px; }
-        .section-title { font-size: 14px; color: #666; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-        .row { display: flex; justify-content: space-between; margin-bottom: 8px; }
-        .label { color: #666; }
-        .value { font-weight: 500; }
-        .highlight { background: #f0fdfa; padding: 15px; border-radius: 8px; margin-top: 20px; }
-        .amount { font-size: 24px; color: #0d9488; font-weight: bold; }
-        .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 12px; }
-        .status { display: inline-block; padding: 4px 12px; background: #dcfce7; color: #166534; border-radius: 20px; font-size: 12px; }
-        @media print { body { padding: 20px; } }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px; background: #fff; }
+        .header { text-align: center; border-bottom: 3px solid #0d9488; padding-bottom: 25px; margin-bottom: 30px; }
+        .logo { font-size: 28px; font-weight: bold; color: #0d9488; letter-spacing: 1px; }
+        .subtitle { font-size: 12px; color: #666; margin-top: 4px; }
+        .title { font-size: 22px; margin-top: 15px; color: #333; }
+        .receipt-id { font-size: 11px; color: #888; margin-top: 8px; }
+        .section { margin-bottom: 25px; background: #fafafa; padding: 20px; border-radius: 8px; }
+        .section-title { font-size: 13px; color: #0d9488; text-transform: uppercase; font-weight: 600; margin-bottom: 15px; letter-spacing: 0.5px; }
+        .row { display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+        .row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .label { color: #666; font-size: 14px; }
+        .value { font-weight: 600; color: #333; font-size: 14px; text-align: right; max-width: 60%; }
+        .highlight { background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border: 1px solid #99f6e4; }
+        .amount-label { font-size: 14px; color: #666; margin-bottom: 5px; }
+        .amount { font-size: 32px; color: #0d9488; font-weight: bold; }
+        .status { display: inline-block; padding: 6px 16px; background: #dcfce7; color: #166534; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .footer { text-align: center; margin-top: 40px; padding-top: 25px; border-top: 2px solid #eee; }
+        .footer p { color: #666; font-size: 12px; margin-bottom: 8px; }
+        .footer .thanks { font-size: 14px; color: #0d9488; font-weight: 600; margin-bottom: 15px; }
+        .print-btn { display: block; margin: 20px auto; padding: 12px 30px; background: #0d9488; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; }
+        .print-btn:hover { background: #0f766e; }
+        @media print {
+            body { padding: 20px; }
+            .print-btn { display: none; }
+            .section { background: #f8f8f8; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .highlight { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="logo">MedConf</div>
+        <div class="subtitle">Medical Conference Portal</div>
         <div class="title">Registration Receipt</div>
+        <div class="receipt-id">Receipt #${registrationId.slice(-8).toUpperCase()}</div>
     </div>
 
     <div class="section">
         <div class="section-title">Event Details</div>
-        <div class="row"><span class="label">Event:</span><span class="value">${eventData.title}</span></div>
-        <div class="row"><span class="label">Date:</span><span class="value">${eventData.date}</span></div>
-        <div class="row"><span class="label">Time:</span><span class="value">${eventData.time}</span></div>
-        <div class="row"><span class="label">Location:</span><span class="value">${eventData.location}</span></div>
-        ${eventData.cmeCredits ? `<div class="row"><span class="label">CME Credits:</span><span class="value">${eventData.cmeCredits} Credits</span></div>` : ''}
+        <div class="row"><span class="label">Event Name</span><span class="value">${eventData.title}</span></div>
+        <div class="row"><span class="label">Date</span><span class="value">${eventData.date}</span></div>
+        <div class="row"><span class="label">Time</span><span class="value">${eventData.time}</span></div>
+        <div class="row"><span class="label">Venue</span><span class="value">${eventData.location}</span></div>
+        ${eventData.cmeCredits ? `<div class="row"><span class="label">CME Credits</span><span class="value">${eventData.cmeCredits} Credits</span></div>` : ''}
     </div>
 
     <div class="section">
-        <div class="section-title">Registrant Details</div>
-        <div class="row"><span class="label">Name:</span><span class="value">${formData.title} ${formData.firstName} ${formData.lastName}</span></div>
-        <div class="row"><span class="label">Email:</span><span class="value">${formData.email}</span></div>
-        <div class="row"><span class="label">Phone:</span><span class="value">${formData.phone}</span></div>
-        <div class="row"><span class="label">Institution:</span><span class="value">${formData.institution}</span></div>
-        ${formData.designation ? `<div class="row"><span class="label">Designation:</span><span class="value">${formData.designation}</span></div>` : ''}
+        <div class="section-title">Attendee Information</div>
+        <div class="row"><span class="label">Full Name</span><span class="value">${formData.title} ${formData.firstName} ${formData.lastName}</span></div>
+        <div class="row"><span class="label">Email</span><span class="value">${formData.email}</span></div>
+        <div class="row"><span class="label">Phone</span><span class="value">${formData.phone}</span></div>
+        <div class="row"><span class="label">Institution</span><span class="value">${formData.institution}</span></div>
+        ${formData.designation ? `<div class="row"><span class="label">Designation</span><span class="value">${formData.designation}</span></div>` : ''}
     </div>
 
     <div class="section">
-        <div class="section-title">Registration Details</div>
-        <div class="row"><span class="label">Registration ID:</span><span class="value">${registrationId}</span></div>
-        <div class="row"><span class="label">Category:</span><span class="value">${selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}</span></div>
-        <div class="row"><span class="label">Status:</span><span class="status">Confirmed</span></div>
-        <div class="row"><span class="label">Date:</span><span class="value">${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
+        <div class="section-title">Registration Information</div>
+        <div class="row"><span class="label">Registration ID</span><span class="value">${registrationId}</span></div>
+        <div class="row"><span class="label">Category</span><span class="value">${selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}</span></div>
+        <div class="row"><span class="label">Registration Date</span><span class="value">${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
+        <div class="row"><span class="label">Payment Status</span><span class="status">Confirmed</span></div>
     </div>
 
     <div class="highlight">
-        <div class="row">
-            <span class="label">Amount Paid:</span>
-            <span class="amount">₹${(eventData.isEarlyBird && eventData.earlyBirdPrice ? eventData.earlyBirdPrice : eventData.price).toLocaleString()}</span>
-        </div>
+        <div class="amount-label">Total Amount Paid</div>
+        <div class="amount">₹${(eventData.isEarlyBird && eventData.earlyBirdPrice ? eventData.earlyBirdPrice : eventData.price).toLocaleString()}</div>
     </div>
 
     <div class="footer">
-        <p>Thank you for registering! A confirmation email has been sent to ${formData.email}</p>
-        <p>For any queries, contact: ${eventData.contactEmail || 'support@medconf.com'}</p>
-        <p style="margin-top: 15px;">© ${new Date().getFullYear()} MedConf. All rights reserved.</p>
+        <p class="thanks">Thank you for registering!</p>
+        <p>A confirmation email has been sent to ${formData.email}</p>
+        <p>For queries: ${eventData.contactEmail || 'support@medconf.com'} | ${eventData.contactPhone || ''}</p>
+        <p style="margin-top: 15px; color: #999;">© ${new Date().getFullYear()} MedConf. All rights reserved.</p>
     </div>
+
+    <button class="print-btn" onclick="window.print()">Save as PDF / Print</button>
 </body>
 </html>`;
 
-        const blob = new Blob([receiptContent], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `receipt-${registrationId}.html`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        // Open in new window for print-to-PDF
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.document.write(receiptContent);
+            printWindow.document.close();
+        }
     };
 
     if (loading) {
