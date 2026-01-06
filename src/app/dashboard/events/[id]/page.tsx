@@ -410,7 +410,7 @@ export default function EventDetailPage() {
             setFormError(null);
             setFormSuccess(false);
 
-            const response = await registrationsService.create({
+            const response = await registrationsService.createAdmin({
                 eventId: event.id,
                 name: formData.name,
                 email: formData.email,

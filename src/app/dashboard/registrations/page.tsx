@@ -351,7 +351,7 @@ function RegistrationsContent() {
 
         try {
             setSubmitting(true);
-            const response = await registrationsService.create({
+            const response = await registrationsService.createAdmin({
                 eventId: formData.eventId,
                 name: formData.name,
                 email: formData.email,
