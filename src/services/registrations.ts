@@ -119,9 +119,15 @@ export const registrationsService = {
     api.get<Registration>(`/api/registrations/${id}`),
 
   /**
-   * Create new registration (public)
+   * Create new registration (public - no auth required)
    */
   create: (data: CreateRegistrationData) =>
+    api.post<Registration>("/api/registrations/public", data),
+
+  /**
+   * Create new registration (admin - requires auth)
+   */
+  createAdmin: (data: CreateRegistrationData) =>
     api.post<Registration>("/api/registrations", data),
 
   /**

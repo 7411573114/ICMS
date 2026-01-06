@@ -6,7 +6,7 @@ import { auth } from "@/lib/auth";
 const protectedRoutes = ["/dashboard", "/api/users", "/api/events", "/api/registrations", "/api/speakers", "/api/sponsors", "/api/certificates", "/api/upload", "/api/dashboard"];
 
 // Routes that are public
-const publicRoutes = ["/", "/auth", "/events", "/api/auth", "/api/events/public", "/api/certificates/verify"];
+const publicRoutes = ["/", "/auth", "/events", "/api/auth", "/api/events/public", "/api/certificates/verify", "/api/registrations/public", "/api/health"];
 
 // Routes that require specific roles
 const roleRoutes: Record<string, string[]> = {
