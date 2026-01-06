@@ -7,7 +7,7 @@ services:
     name: icms
     runtime: node
     plan: free # free, starter, standard, pro (upgrade later for always-on)
-    buildCommand: npm ci && npx prisma generate && npx prisma migrate deploy && npm run build
+    buildCommand: npm ci --include=dev && npx prisma generate && npx prisma migrate deploy && npm run build
     startCommand: npm run start
     envVars:
       - key: NODE_ENV
