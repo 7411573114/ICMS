@@ -29,7 +29,7 @@ export async function GET(
               },
             },
           },
-          orderBy: { order: "asc" },
+          orderBy: { sessionOrder: "asc" },
         },
         eventSponsors: {
           include: {
