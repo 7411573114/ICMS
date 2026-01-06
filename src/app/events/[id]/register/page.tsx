@@ -33,6 +33,7 @@ import {
     Building2,
     Phone,
     Globe,
+    Download,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -341,6 +342,89 @@ export default function RegisterPage() {
         formData.phone &&
         formData.institution &&
         formData.agreeTerms;
+
+    const handleDownloadReceipt = () => {
+        if (!eventData || !registrationId) return;
+
+        const receiptContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Registration Receipt - ${eventData.title}</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px; }
+        .header { text-align: center; border-bottom: 2px solid #0d9488; padding-bottom: 20px; margin-bottom: 30px; }
+        .logo { font-size: 24px; font-weight: bold; color: #0d9488; }
+        .title { font-size: 20px; margin-top: 10px; }
+        .section { margin-bottom: 25px; }
+        .section-title { font-size: 14px; color: #666; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .label { color: #666; }
+        .value { font-weight: 500; }
+        .highlight { background: #f0fdfa; padding: 15px; border-radius: 8px; margin-top: 20px; }
+        .amount { font-size: 24px; color: #0d9488; font-weight: bold; }
+        .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 12px; }
+        .status { display: inline-block; padding: 4px 12px; background: #dcfce7; color: #166534; border-radius: 20px; font-size: 12px; }
+        @media print { body { padding: 20px; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">MedConf</div>
+        <div class="title">Registration Receipt</div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Event Details</div>
+        <div class="row"><span class="label">Event:</span><span class="value">${eventData.title}</span></div>
+        <div class="row"><span class="label">Date:</span><span class="value">${eventData.date}</span></div>
+        <div class="row"><span class="label">Time:</span><span class="value">${eventData.time}</span></div>
+        <div class="row"><span class="label">Location:</span><span class="value">${eventData.location}</span></div>
+        ${eventData.cmeCredits ? `<div class="row"><span class="label">CME Credits:</span><span class="value">${eventData.cmeCredits} Credits</span></div>` : ''}
+    </div>
+
+    <div class="section">
+        <div class="section-title">Registrant Details</div>
+        <div class="row"><span class="label">Name:</span><span class="value">${formData.title} ${formData.firstName} ${formData.lastName}</span></div>
+        <div class="row"><span class="label">Email:</span><span class="value">${formData.email}</span></div>
+        <div class="row"><span class="label">Phone:</span><span class="value">${formData.phone}</span></div>
+        <div class="row"><span class="label">Institution:</span><span class="value">${formData.institution}</span></div>
+        ${formData.designation ? `<div class="row"><span class="label">Designation:</span><span class="value">${formData.designation}</span></div>` : ''}
+    </div>
+
+    <div class="section">
+        <div class="section-title">Registration Details</div>
+        <div class="row"><span class="label">Registration ID:</span><span class="value">${registrationId}</span></div>
+        <div class="row"><span class="label">Category:</span><span class="value">${selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}</span></div>
+        <div class="row"><span class="label">Status:</span><span class="status">Confirmed</span></div>
+        <div class="row"><span class="label">Date:</span><span class="value">${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
+    </div>
+
+    <div class="highlight">
+        <div class="row">
+            <span class="label">Amount Paid:</span>
+            <span class="amount">₹${(eventData.isEarlyBird && eventData.earlyBirdPrice ? eventData.earlyBirdPrice : eventData.price).toLocaleString()}</span>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Thank you for registering! A confirmation email has been sent to ${formData.email}</p>
+        <p>For any queries, contact: ${eventData.contactEmail || 'support@medconf.com'}</p>
+        <p style="margin-top: 15px;">© ${new Date().getFullYear()} MedConf. All rights reserved.</p>
+    </div>
+</body>
+</html>`;
+
+        const blob = new Blob([receiptContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `receipt-${registrationId}.html`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
 
     if (loading) {
         return (
@@ -1010,8 +1094,8 @@ export default function RegisterPage() {
                                     </div>
 
                                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                                        <Button variant="outline" className="gap-2">
-                                            <CreditCard className="h-4 w-4" />
+                                        <Button variant="outline" className="gap-2" onClick={handleDownloadReceipt}>
+                                            <Download className="h-4 w-4" />
                                             Download Receipt
                                         </Button>
                                         <Link href="/events">
