@@ -353,29 +353,30 @@ export default function RegisterPage() {
     <title>Registration Receipt - ${eventData.title}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px; background: #fff; }
-        .header { text-align: center; border-bottom: 3px solid #0d9488; padding-bottom: 25px; margin-bottom: 30px; }
-        .logo { font-size: 28px; font-weight: bold; color: #0d9488; letter-spacing: 1px; }
-        .subtitle { font-size: 12px; color: #666; margin-top: 4px; }
-        .title { font-size: 22px; margin-top: 15px; color: #333; }
-        .receipt-id { font-size: 11px; color: #888; margin-top: 8px; }
-        .section { margin-bottom: 25px; background: #fafafa; padding: 20px; border-radius: 8px; }
-        .section-title { font-size: 13px; color: #0d9488; text-transform: uppercase; font-weight: 600; margin-bottom: 15px; letter-spacing: 0.5px; }
-        .row { display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
-        .row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-        .label { color: #666; font-size: 14px; }
-        .value { font-weight: 600; color: #333; font-size: 14px; text-align: right; max-width: 60%; }
-        .highlight { background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border: 1px solid #99f6e4; }
-        .amount-label { font-size: 14px; color: #666; margin-bottom: 5px; }
-        .amount { font-size: 32px; color: #0d9488; font-weight: bold; }
-        .status { display: inline-block; padding: 6px 16px; background: #dcfce7; color: #166534; border-radius: 20px; font-size: 12px; font-weight: 600; }
-        .footer { text-align: center; margin-top: 40px; padding-top: 25px; border-top: 2px solid #eee; }
-        .footer p { color: #666; font-size: 12px; margin-bottom: 8px; }
-        .footer .thanks { font-size: 14px; color: #0d9488; font-weight: 600; margin-bottom: 15px; }
-        .print-btn { display: block; margin: 20px auto; padding: 12px 30px; background: #0d9488; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px; background: #fff; font-size: 12px; }
+        .header { text-align: center; border-bottom: 2px solid #0d9488; padding-bottom: 12px; margin-bottom: 15px; }
+        .logo { font-size: 22px; font-weight: bold; color: #0d9488; }
+        .subtitle { font-size: 10px; color: #666; margin-top: 2px; }
+        .title { font-size: 16px; margin-top: 8px; color: #333; }
+        .receipt-id { font-size: 10px; color: #888; margin-top: 4px; }
+        .content { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .section { background: #fafafa; padding: 12px; border-radius: 6px; }
+        .section.full { grid-column: 1 / -1; }
+        .section-title { font-size: 10px; color: #0d9488; text-transform: uppercase; font-weight: 600; margin-bottom: 8px; letter-spacing: 0.5px; }
+        .row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .label { color: #666; font-size: 11px; }
+        .value { font-weight: 600; color: #333; font-size: 11px; text-align: right; max-width: 60%; }
+        .highlight { background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%); padding: 15px; border-radius: 8px; margin: 12px 0; border: 1px solid #99f6e4; text-align: center; }
+        .amount-label { font-size: 11px; color: #666; margin-bottom: 3px; }
+        .amount { font-size: 24px; color: #0d9488; font-weight: bold; }
+        .status { display: inline-block; padding: 3px 10px; background: #dcfce7; color: #166534; border-radius: 12px; font-size: 10px; font-weight: 600; }
+        .footer { text-align: center; margin-top: 15px; padding-top: 12px; border-top: 1px solid #eee; }
+        .footer p { color: #666; font-size: 10px; margin-bottom: 4px; }
+        .footer .thanks { font-size: 12px; color: #0d9488; font-weight: 600; margin-bottom: 8px; }
+        .print-btn { display: block; margin: 15px auto; padding: 10px 25px; background: #0d9488; color: white; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; }
         .print-btn:hover { background: #0f766e; }
         @media print {
-            body { padding: 20px; }
+            body { padding: 15px; }
             .print-btn { display: none; }
             .section { background: #f8f8f8; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .highlight { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -390,30 +391,34 @@ export default function RegisterPage() {
         <div class="receipt-id">Receipt #${registrationId.slice(-8).toUpperCase()}</div>
     </div>
 
-    <div class="section">
-        <div class="section-title">Event Details</div>
-        <div class="row"><span class="label">Event Name</span><span class="value">${eventData.title}</span></div>
-        <div class="row"><span class="label">Date</span><span class="value">${eventData.date}</span></div>
-        <div class="row"><span class="label">Time</span><span class="value">${eventData.time}</span></div>
-        <div class="row"><span class="label">Venue</span><span class="value">${eventData.location}</span></div>
-        ${eventData.cmeCredits ? `<div class="row"><span class="label">CME Credits</span><span class="value">${eventData.cmeCredits} Credits</span></div>` : ''}
-    </div>
+    <div class="content">
+        <div class="section">
+            <div class="section-title">Event Details</div>
+            <div class="row"><span class="label">Event</span><span class="value">${eventData.title}</span></div>
+            <div class="row"><span class="label">Date</span><span class="value">${eventData.date}</span></div>
+            <div class="row"><span class="label">Time</span><span class="value">${eventData.time}</span></div>
+            <div class="row"><span class="label">Venue</span><span class="value">${eventData.location}</span></div>
+            ${eventData.cmeCredits ? `<div class="row"><span class="label">CME</span><span class="value">${eventData.cmeCredits} Credits</span></div>` : ''}
+        </div>
 
-    <div class="section">
-        <div class="section-title">Attendee Information</div>
-        <div class="row"><span class="label">Full Name</span><span class="value">${formData.title} ${formData.firstName} ${formData.lastName}</span></div>
-        <div class="row"><span class="label">Email</span><span class="value">${formData.email}</span></div>
-        <div class="row"><span class="label">Phone</span><span class="value">${formData.phone}</span></div>
-        <div class="row"><span class="label">Institution</span><span class="value">${formData.institution}</span></div>
-        ${formData.designation ? `<div class="row"><span class="label">Designation</span><span class="value">${formData.designation}</span></div>` : ''}
-    </div>
+        <div class="section">
+            <div class="section-title">Attendee</div>
+            <div class="row"><span class="label">Name</span><span class="value">${formData.title} ${formData.firstName} ${formData.lastName}</span></div>
+            <div class="row"><span class="label">Email</span><span class="value">${formData.email}</span></div>
+            <div class="row"><span class="label">Phone</span><span class="value">${formData.phone}</span></div>
+            <div class="row"><span class="label">Institution</span><span class="value">${formData.institution}</span></div>
+            ${formData.designation ? `<div class="row"><span class="label">Designation</span><span class="value">${formData.designation}</span></div>` : ''}
+        </div>
 
-    <div class="section">
-        <div class="section-title">Registration Information</div>
-        <div class="row"><span class="label">Registration ID</span><span class="value">${registrationId}</span></div>
-        <div class="row"><span class="label">Category</span><span class="value">${selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}</span></div>
-        <div class="row"><span class="label">Registration Date</span><span class="value">${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
-        <div class="row"><span class="label">Payment Status</span><span class="status">Confirmed</span></div>
+        <div class="section full">
+            <div class="section-title">Registration</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="row"><span class="label">Registration ID</span><span class="value">${registrationId}</span></div>
+                <div class="row"><span class="label">Category</span><span class="value">${selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}</span></div>
+                <div class="row"><span class="label">Date</span><span class="value">${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span></div>
+                <div class="row"><span class="label">Status</span><span class="status">Confirmed</span></div>
+            </div>
+        </div>
     </div>
 
     <div class="highlight">
@@ -423,9 +428,8 @@ export default function RegisterPage() {
 
     <div class="footer">
         <p class="thanks">Thank you for registering!</p>
-        <p>A confirmation email has been sent to ${formData.email}</p>
-        <p>For queries: ${eventData.contactEmail || 'support@medconf.com'} | ${eventData.contactPhone || ''}</p>
-        <p style="margin-top: 15px; color: #999;">© ${new Date().getFullYear()} MedConf. All rights reserved.</p>
+        <p>Confirmation sent to ${formData.email} | Queries: ${eventData.contactEmail || 'support@medconf.com'}</p>
+        <p style="margin-top: 8px; color: #999;">© ${new Date().getFullYear()} MedConf</p>
     </div>
 
     <button class="print-btn" onclick="window.print()">Save as PDF / Print</button>
