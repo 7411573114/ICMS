@@ -33,6 +33,10 @@ import {
     Heart,
     Zap,
     Eye,
+    Camera,
+    ChevronLeft,
+    ChevronRight,
+    Images,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,6 +56,58 @@ import { getEventImage } from "@/lib/event-utils";
 import { EVENT_CATEGORIES } from "@/lib/event-constants";
 import { eventsService, Event } from "@/services/events";
 import { sponsorsService, Sponsor } from "@/services/sponsors";
+
+// Gallery images data
+const galleryImages = [
+    {
+        id: 1,
+        src: "https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?w=800&q=80",
+        alt: "Medical Conference Keynote",
+        category: "Conference",
+    },
+    {
+        id: 2,
+        src: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&q=80",
+        alt: "Workshop Session",
+        category: "Workshop",
+    },
+    {
+        id: 3,
+        src: "https://images.unsplash.com/photo-1559757175-5700dde675bc?w=800&q=80",
+        alt: "Networking Event",
+        category: "Networking",
+    },
+    {
+        id: 4,
+        src: "https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=800&q=80",
+        alt: "Medical Equipment Exhibition",
+        category: "Exhibition",
+    },
+    {
+        id: 5,
+        src: "https://images.unsplash.com/photo-1551601651-2a8555f1a136?w=800&q=80",
+        alt: "CME Training Session",
+        category: "Training",
+    },
+    {
+        id: 6,
+        src: "https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?w=800&q=80",
+        alt: "Panel Discussion",
+        category: "Conference",
+    },
+    {
+        id: 7,
+        src: "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800&q=80",
+        alt: "Award Ceremony",
+        category: "Awards",
+    },
+    {
+        id: 8,
+        src: "https://images.unsplash.com/photo-1504439468489-c8920d796a29?w=800&q=80",
+        alt: "Hands-on Workshop",
+        category: "Workshop",
+    },
+];
 
 // Event type for display
 interface DisplayEvent {
@@ -176,6 +232,10 @@ export default function PublicHomePage() {
     const [activeCategory, setActiveCategory] = useState("All");
     const [hoveredEvent, setHoveredEvent] = useState<string | null>(null);
 
+    // Gallery lightbox state
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [lightboxIndex, setLightboxIndex] = useState(0);
+
     // Data from API
     const [upcomingEvents, setUpcomingEvents] = useState<DisplayEvent[]>([]);
     const [sponsors, setSponsors] = useState<DisplaySponsor[]>([]);
@@ -265,7 +325,7 @@ export default function PublicHomePage() {
     // Scroll spy for active section
     useEffect(() => {
         const handleScroll = () => {
-            const sections = ["hero", "events", "about", "contact"];
+            const sections = ["hero", "events", "gallery", "about", "contact"];
             const scrollPosition = window.scrollY + 150; // Offset for header
 
             for (const sectionId of sections) {
@@ -372,6 +432,24 @@ export default function PublicHomePage() {
         setLoginError(null);
     };
 
+    // Gallery lightbox handlers
+    const openLightbox = (index: number) => {
+        setLightboxIndex(index);
+        setLightboxOpen(true);
+    };
+
+    const closeLightbox = () => {
+        setLightboxOpen(false);
+    };
+
+    const nextImage = () => {
+        setLightboxIndex((prev) => (prev + 1) % galleryImages.length);
+    };
+
+    const prevImage = () => {
+        setLightboxIndex((prev) => (prev - 1 + galleryImages.length) % galleryImages.length);
+    };
+
     const getSlotsInfo = (event: DisplayEvent) => {
         const remaining = event.capacity - event.registrations;
         if (remaining <= 0) return { text: "Sold Out", color: "text-red-500", urgent: true };
@@ -397,7 +475,7 @@ export default function PublicHomePage() {
 
                         {/* Desktop Navigation */}
                         <nav className="hidden md:flex items-center gap-1">
-                            {["Home", "Events", "About", "Contact"].map((item) => (
+                            {["Home", "Events", "Gallery", "About", "Contact"].map((item) => (
                                 <button
                                     key={item}
                                     type="button"
@@ -454,7 +532,7 @@ export default function PublicHomePage() {
                     {mobileMenuOpen && (
                         <div className="md:hidden py-4 border-t animate-fadeIn">
                             <nav className="flex flex-col gap-1">
-                                {["Home", "Events", "About", "Contact"].map((item) => (
+                                {["Home", "Events", "Gallery", "About", "Contact"].map((item) => (
                                     <button
                                         key={item}
                                         type="button"
@@ -1075,8 +1153,158 @@ export default function PublicHomePage() {
                 </div>
             </section>
 
+            {/* Gallery Section */}
+            <section id="gallery" className="py-20 lg:py-28 bg-slate-50 relative overflow-hidden">
+                <DecorativeBackground />
+
+                <div className="container mx-auto px-4 lg:px-8 relative z-10">
+                    {/* Section Header */}
+                    <div data-scroll-reveal className="text-center mb-16">
+                        <Badge variant="outline" className="mb-4 bg-primary/5 border-primary/20 px-5 py-1.5 rounded-full">
+                            <Camera className="h-3.5 w-3.5 mr-2" />
+                            Event Gallery
+                        </Badge>
+                        <h2 className="text-3xl lg:text-5xl font-bold tracking-tight mb-4">
+                            Moments from Our Events
+                        </h2>
+                        <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
+                            Explore highlights from our past conferences, workshops, and networking sessions
+                        </p>
+                    </div>
+
+                    {/* Gallery Grid - Masonry Style */}
+                    <div data-scroll-reveal className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+                        {galleryImages.map((image, index) => (
+                            <div
+                                key={image.id}
+                                className={cn(
+                                    "relative group cursor-pointer overflow-hidden rounded-2xl",
+                                    // Make some items span 2 rows for masonry effect
+                                    index === 0 || index === 5 ? "row-span-2" : "",
+                                    index === 0 || index === 5 ? "h-[300px] md:h-[400px]" : "h-[180px] md:h-[200px]"
+                                )}
+                                onClick={() => openLightbox(index)}
+                            >
+                                <Image
+                                    src={image.src}
+                                    alt={image.alt}
+                                    fill
+                                    className="object-cover transition-transform duration-500 group-hover:scale-110"
+                                />
+                                {/* Overlay */}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300" />
+
+                                {/* Content on Hover */}
+                                <div className="absolute inset-0 flex flex-col justify-end p-4 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                                    <Badge className="w-fit mb-2 bg-white/20 backdrop-blur-sm text-white border-0 text-xs">
+                                        {image.category}
+                                    </Badge>
+                                    <p className="text-white font-medium text-sm line-clamp-2">
+                                        {image.alt}
+                                    </p>
+                                </div>
+
+                                {/* View Icon */}
+                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 scale-75 group-hover:scale-100">
+                                    <Eye className="h-5 w-5 text-white" />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* View More CTA */}
+                    <div data-scroll-reveal className="text-center mt-12">
+                        <Link href="/gallery">
+                            <Button variant="outline" size="lg" className="gap-2 px-8 rounded-full border-2 hover:bg-primary hover:text-white hover:border-primary transition-all duration-300">
+                                <Images className="h-4 w-4" />
+                                View Full Gallery
+                                <ArrowRight className="h-4 w-4" />
+                            </Button>
+                        </Link>
+                    </div>
+                </div>
+
+                {/* Bottom Curve */}
+                <svg className="absolute bottom-0 left-0 right-0 w-full" viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+                    <path d="M0 80L48 74.7C96 69 192 59 288 53.3C384 48 480 48 576 53.3C672 59 768 69 864 69.3C960 69 1056 59 1152 53.3C1248 48 1344 48 1392 48L1440 48V80H1392C1344 80 1248 80 1152 80C1056 80 960 80 864 80C768 80 672 80 576 80C480 80 384 80 288 80C192 80 96 80 48 80H0Z" fill="white" />
+                </svg>
+            </section>
+
+            {/* Lightbox Modal */}
+            {lightboxOpen && (
+                <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center" onClick={closeLightbox}>
+                    {/* Close Button */}
+                    <button
+                        className="absolute top-4 right-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                        onClick={closeLightbox}
+                        aria-label="Close lightbox"
+                    >
+                        <X className="h-6 w-6 text-white" />
+                    </button>
+
+                    {/* Navigation - Previous */}
+                    <button
+                        className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                        onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                        aria-label="Previous image"
+                    >
+                        <ChevronLeft className="h-6 w-6 text-white" />
+                    </button>
+
+                    {/* Navigation - Next */}
+                    <button
+                        className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                        onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                        aria-label="Next image"
+                    >
+                        <ChevronRight className="h-6 w-6 text-white" />
+                    </button>
+
+                    {/* Image Container */}
+                    <div className="relative max-w-5xl max-h-[85vh] mx-4" onClick={(e) => e.stopPropagation()}>
+                        <Image
+                            src={galleryImages[lightboxIndex].src}
+                            alt={galleryImages[lightboxIndex].alt}
+                            width={1200}
+                            height={800}
+                            className="object-contain max-h-[85vh] rounded-lg"
+                        />
+
+                        {/* Image Info */}
+                        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent rounded-b-lg">
+                            <Badge className="mb-2 bg-white/20 backdrop-blur-sm text-white border-0">
+                                {galleryImages[lightboxIndex].category}
+                            </Badge>
+                            <p className="text-white font-medium text-lg">
+                                {galleryImages[lightboxIndex].alt}
+                            </p>
+                            <p className="text-white/60 text-sm mt-1">
+                                {lightboxIndex + 1} of {galleryImages.length}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Thumbnail Strip */}
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 px-4 py-2 bg-black/50 backdrop-blur-sm rounded-full">
+                        {galleryImages.map((_, index) => (
+                            <button
+                                key={index}
+                                onClick={(e) => { e.stopPropagation(); setLightboxIndex(index); }}
+                                className={cn(
+                                    "w-2 h-2 rounded-full transition-all duration-300",
+                                    index === lightboxIndex
+                                        ? "w-6 bg-white"
+                                        : "bg-white/40 hover:bg-white/60"
+                                )}
+                                aria-label={`Go to image ${index + 1}`}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* About Us Section - Timeline Design */}
-            <section id="about" className="py-20 lg:py-28 bg-slate-50 relative overflow-hidden">
+            <section id="about" className="py-20 lg:py-28 bg-white relative overflow-hidden">
                 <DecorativeBackground />
 
                 <div className="container mx-auto px-4 lg:px-8 relative z-10">

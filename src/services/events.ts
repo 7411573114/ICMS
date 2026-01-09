@@ -80,6 +80,16 @@ export interface Event {
     };
     tier: string;
   }[];
+  pricingCategories?: {
+    id: string;
+    name: string;
+    description: string | null;
+    totalSlots: number;
+    price: number | string;
+    earlyBirdPrice: number | string | null;
+    earlyBirdDeadline: string | null;
+    displayOrder: number;
+  }[];
 }
 
 export interface EventFilters {
@@ -139,6 +149,15 @@ export interface CreateEventData {
   includes?: string[];
   isPublished?: boolean;
   isFeatured?: boolean;
+  pricingCategories?: {
+    name: string;
+    description?: string;
+    totalSlots?: number;
+    price: number;
+    earlyBirdPrice?: number;
+    earlyBirdDeadline?: string;
+    displayOrder?: number;
+  }[];
 }
 
 export interface EventSpeaker {
@@ -254,6 +273,13 @@ export const eventsService = {
    */
   delete: (id: string) =>
     api.delete<{ id: string }>(`/api/events/${id}`),
+
+  /**
+   * Duplicate event
+   * Creates a copy of the event with dates shifted +3 months, status set to DRAFT
+   */
+  duplicate: (id: string) =>
+    api.post<Event>(`/api/events/${id}/duplicate`, {}),
 
   /**
    * Get event speakers

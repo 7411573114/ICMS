@@ -143,6 +143,7 @@ export default function CreateEventPage() {
         state: "",
         mapLink: "",
         virtualLink: "",
+        registrationOpensDate: new Date().toISOString().split('T')[0], // Default to today
         registrationDeadline: "",
         // Settings
         cmeEnabled: false,
@@ -381,6 +382,16 @@ export default function CreateEventPage() {
                 signatory1Title: formData.signatory1Title || undefined,
                 signatory2Name: formData.signatory2Name || undefined,
                 signatory2Title: formData.signatory2Title || undefined,
+                // Include pricing categories for category-based pricing
+                pricingCategories: slotCategories.map((cat, index) => ({
+                    name: cat.name,
+                    description: cat.description || undefined,
+                    totalSlots: cat.totalSlots,
+                    price: cat.price,
+                    earlyBirdPrice: cat.earlyBirdPrice || undefined,
+                    earlyBirdDeadline: cat.earlyBirdDeadline || undefined,
+                    displayOrder: index,
+                })),
             };
 
             const eventRes = await eventsService.create(eventData);
@@ -1305,14 +1316,17 @@ export default function CreateEventPage() {
                             <CardContent className="space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>Registration Opens</Label>
+                                        <Label>Registration Opens *</Label>
                                         <Input
                                             type="date"
-                                            value={formData.startDate}
-                                            disabled
-                                            className="bg-muted"
+                                            value={formData.registrationOpensDate}
+                                            onChange={(e) => updateFormData("registrationOpensDate", e.target.value)}
+                                            min={new Date().toISOString().split('T')[0]}
+                                            max={formData.startDate || undefined}
                                         />
-                                        <p className="text-xs text-muted-foreground">Same as event start date</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            When registration becomes available (must be before event start)
+                                        </p>
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Registration Deadline</Label>
@@ -1320,7 +1334,12 @@ export default function CreateEventPage() {
                                             type="date"
                                             value={formData.registrationDeadline}
                                             onChange={(e) => updateFormData("registrationDeadline", e.target.value)}
+                                            min={formData.registrationOpensDate || new Date().toISOString().split('T')[0]}
+                                            max={formData.startDate || undefined}
                                         />
+                                        <p className="text-xs text-muted-foreground">
+                                            Last date to register (must be before event start)
+                                        </p>
                                     </div>
                                 </div>
 

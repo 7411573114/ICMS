@@ -47,6 +47,9 @@ export async function GET(
         eventSessions: {
           orderBy: [{ sessionDate: "asc" }, { startTime: "asc" }],
         },
+        pricingCategories: {
+          orderBy: { displayOrder: "asc" },
+        },
         _count: {
           select: {
             registrations: true,

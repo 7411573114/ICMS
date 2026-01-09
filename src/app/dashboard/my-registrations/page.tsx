@@ -114,7 +114,7 @@ export default function MyRegistrationsPage() {
                         <p className="text-muted-foreground mb-4">
                             You haven&apos;t registered for any events yet.
                         </p>
-                        <Link href="/events">
+                        <Link href="/dashboard/browse-events">
                             <Button>Browse Events</Button>
                         </Link>
                     </div>

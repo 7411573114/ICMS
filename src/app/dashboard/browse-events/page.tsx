@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { EVENT_TYPES, EVENT_CATEGORIES } from "@/lib/event-constants";
 
 interface PublicEvent {
     id: string;
@@ -51,11 +52,16 @@ interface PublicEvent {
     };
 }
 
+// Build filter options from shared constants
+const eventTypes = ["All Types", ...EVENT_TYPES.map(t => t.value)];
+const categories = ["All Categories", ...EVENT_CATEGORIES.map(c => c.value)];
+
 export default function BrowseEventsPage() {
     const [events, setEvents] = useState<PublicEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedType, setSelectedType] = useState("All Types");
+    const [selectedCategory, setSelectedCategory] = useState("All Categories");
     const [showFilters, setShowFilters] = useState(false);
 
     useEffect(() => {
@@ -83,10 +89,22 @@ export default function BrowseEventsPage() {
             (event.description && event.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
             (event.city && event.city.toLowerCase().includes(searchQuery.toLowerCase()));
         const matchesType = selectedType === "All Types" || event.type === selectedType;
-        return matchesSearch && matchesType;
+        const matchesCategory = selectedCategory === "All Categories" || event.category === selectedCategory;
+        return matchesSearch && matchesType && matchesCategory;
     });
 
-    const eventTypes = ["All Types", "CONFERENCE", "WORKSHOP", "SEMINAR", "WEBINAR"];
+    // Count active filters
+    const activeFilterCount = [
+        selectedType !== "All Types",
+        selectedCategory !== "All Categories",
+    ].filter(Boolean).length;
+
+    // Clear all filters
+    const clearFilters = () => {
+        setSelectedType("All Types");
+        setSelectedCategory("All Categories");
+        setSearchQuery("");
+    };
 
     const getAvailability = (event: PublicEvent) => {
         const registered = event._count?.registrations || 0;
@@ -113,53 +131,121 @@ export default function BrowseEventsPage() {
         <DashboardLayout title="Browse Events" subtitle="Find and register for upcoming events">
             <div className="space-y-6">
                 {/* Search and Filters */}
-                <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Search events..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10 pr-10"
-                        />
-                        {searchQuery && (
-                            <button
-                                onClick={() => setSearchQuery("")}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
+                <div className="flex flex-col gap-4">
+                    {/* Top Row: Search and Filter Toggle */}
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="relative flex-1 max-w-md">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Search events..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-10 pr-10"
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery("")}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Filter Toggle - Mobile */}
+                        <Button
+                            variant="outline"
+                            className="lg:hidden gap-2"
+                            onClick={() => setShowFilters(!showFilters)}
+                        >
+                            <SlidersHorizontal className="w-4 h-4" />
+                            Filters
+                            {activeFilterCount > 0 && (
+                                <Badge className="h-5 w-5 p-0 flex items-center justify-center text-xs bg-primary text-primary-foreground">
+                                    {activeFilterCount}
+                                </Badge>
+                            )}
+                            <ChevronDown className={cn("w-4 h-4 transition-transform", showFilters && "rotate-180")} />
+                        </Button>
+                    </div>
+
+                    {/* Desktop Filters */}
+                    <div className="hidden lg:flex flex-wrap gap-3 items-center">
+                        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                            <SelectTrigger className="w-[160px]">
+                                <SelectValue placeholder="Category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {categories.map((cat) => (
+                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        <Select value={selectedType} onValueChange={setSelectedType}>
+                            <SelectTrigger className="w-[140px]">
+                                <SelectValue placeholder="Type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {eventTypes.map((type) => (
+                                    <SelectItem key={type} value={type}>
+                                        {type === "All Types" ? type : type.charAt(0) + type.slice(1).toLowerCase()}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        {activeFilterCount > 0 && (
+                            <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground">
+                                <X className="w-4 h-4 mr-1" />
+                                Clear filters
+                            </Button>
                         )}
                     </div>
 
-                    <Button
-                        variant="outline"
-                        className="sm:hidden gap-2"
-                        onClick={() => setShowFilters(!showFilters)}
-                    >
-                        <SlidersHorizontal className="w-4 h-4" />
-                        Filters
-                        <ChevronDown className={cn("w-4 h-4 transition-transform", showFilters && "rotate-180")} />
-                    </Button>
+                    {/* Mobile Filters */}
+                    {showFilters && (
+                        <div className="lg:hidden grid grid-cols-2 gap-3 p-4 bg-muted/50 rounded-xl animate-fadeIn">
+                            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Category" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {categories.map((cat) => (
+                                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
 
-                    <Select value={selectedType} onValueChange={setSelectedType}>
-                        <SelectTrigger className="w-full sm:w-[160px]">
-                            <SelectValue placeholder="Event Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {eventTypes.map((type) => (
-                                <SelectItem key={type} value={type}>
-                                    {type === "All Types" ? type : type.charAt(0) + type.slice(1).toLowerCase()}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                            <Select value={selectedType} onValueChange={setSelectedType}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {eventTypes.map((type) => (
+                                        <SelectItem key={type} value={type}>
+                                            {type === "All Types" ? type : type.charAt(0) + type.slice(1).toLowerCase()}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+
+                            {activeFilterCount > 0 && (
+                                <Button variant="outline" size="sm" onClick={clearFilters} className="col-span-2">
+                                    <X className="w-4 h-4 mr-1" />
+                                    Clear all filters
+                                </Button>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Results Count */}
-                <p className="text-sm text-muted-foreground">
-                    Showing <span className="font-medium text-foreground">{filteredEvents.length}</span> events
-                </p>
+                <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                        Showing <span className="font-medium text-foreground">{filteredEvents.length}</span> of {events.length} events
+                    </p>
+                </div>
 
                 {/* Events List */}
                 {filteredEvents.length === 0 ? (
@@ -262,14 +348,14 @@ export default function BrowseEventsPage() {
                                             </div>
 
                                             <div className="flex items-center gap-2">
-                                                <Link href={`/events/${event.id}`}>
+                                                <Link href={`/dashboard/browse-events/${event.id}`}>
                                                     <Button variant="outline" size="sm">
                                                         <Eye className="w-4 h-4 mr-2" />
                                                         View Details
                                                     </Button>
                                                 </Link>
                                                 {!isPastEvent && !isSoldOut && (
-                                                    <Link href={`/events/${event.id}/register`}>
+                                                    <Link href={`/dashboard/browse-events/${event.id}/register`}>
                                                         <Button size="sm" className="gap-2">
                                                             <Ticket className="w-4 h-4" />
                                                             Register

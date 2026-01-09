@@ -76,6 +76,83 @@ enum CertificateStatus {
 }
 
 // ============================================================================
+// TENANT MODEL (Multi-tenancy)
+// ============================================================================
+
+model Tenant {
+  id                String   @id @default(cuid())
+
+  // Identification
+  slug              String   @unique  // Used in URL: medconf.com/t/slug or slug.medconf.com
+  name              String             // Display name: "ABC Medical College"
+  domain            String?  @unique  // Custom domain: "abcmedical.com"
+
+  // Branding
+  logo              String?            // Logo URL
+  favicon           String?            // Favicon URL
+  tagline           String?            // "Excellence in Medical Education"
+
+  // Theme Colors (CSS variables)
+  primaryColor      String   @default("#0d9488")   // teal-600
+  secondaryColor    String   @default("#0891b2")   // cyan-600
+  accentColor       String   @default("#10b981")   // emerald-500
+
+  // Contact Information
+  email             String?
+  phone             String?
+  address           String?
+  city              String?
+  state             String?
+  country           String?
+  website           String?
+
+  // Social Links
+  facebook          String?
+  twitter           String?
+  linkedin          String?
+  instagram         String?
+  youtube           String?
+
+  // Section Visibility (JSON for flexibility)
+  // { hero: true, events: true, gallery: true, sponsors: true, about: true, contact: true }
+  sections          Json     @default("{\"hero\":true,\"events\":true,\"gallery\":true,\"sponsors\":true,\"about\":true,\"contact\":true}")
+
+  // Hero Section Config
+  heroTitle         String?            // "Advance Your Medical Career"
+  heroSubtitle      String?            // "Register for upcoming conferences..."
+  heroBgImage       String?            // Background image for hero
+
+  // About Section Config
+  aboutTitle        String?
+  aboutDescription  String?  @db.Text
+  aboutFeatures     Json?              // Array of features [{icon, title, description}]
+
+  // Gallery Config
+  galleryImages     Json?              // Array of images [{src, alt, category}]
+  galleryVideos     Json?              // Array of videos [{thumbnail, title, youtubeId, duration}]
+
+  // Footer Config
+  footerText        String?
+  copyrightText     String?
+
+  // Settings
+  isActive          Boolean  @default(true)
+  defaultCurrency   String   @default("INR")
+  defaultTimezone   String   @default("Asia/Kolkata")
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  events            Event[]
+  users             User[]
+
+  @@index([slug])
+  @@index([domain])
+  @@map("tenants")
+}
+
+// ============================================================================
 // AUTH MODELS (NextAuth.js)
 // ============================================================================
 
@@ -92,6 +169,10 @@ model User {
   role          UserRole  @default(ATTENDEE)
   isActive      Boolean   @default(true)
 
+  // Multi-tenancy
+  tenantId      String?
+  tenant        Tenant?   @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
   // Notification Preferences
   notifyEmail          Boolean @default(true)  // Receive updates via email
   notifyRegistrations  Boolean @default(true)  // New registration alerts
@@ -107,6 +188,7 @@ model User {
   registeredBy  Registration[] @relation("RegisteredByUser")
   otps          OTP[]
 
+  @@index([tenantId])
   @@map("users")
 }
 
@@ -210,7 +292,8 @@ model Event {
 
   // Capacity & Registration
   capacity             Int         @default(100)
-  registrationDeadline DateTime?
+  registrationOpensDate DateTime?  // When registration opens (defaults to now if not set)
+  registrationDeadline DateTime?   // When registration closes
   isRegistrationOpen   Boolean     @default(true)
 
   // Pricing
@@ -247,6 +330,10 @@ model Event {
   isPublished          Boolean     @default(false)
   isFeatured           Boolean     @default(false)
 
+  // Multi-tenancy
+  tenantId             String?
+  tenant               Tenant?     @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
 
@@ -256,11 +343,46 @@ model Event {
   eventSessions        EventSession[]
   eventSponsors        EventSponsor[]
   certificates         Certificate[]
+  pricingCategories    EventPricing[]
 
   @@index([status])
   @@index([startDate])
   @@index([isPublished])
+  @@index([tenantId])
   @@map("events")
+}
+
+// ============================================================================
+// EVENT PRICING MODEL (Category-based pricing)
+// ============================================================================
+
+model EventPricing {
+  id                String    @id @default(cuid())
+  eventId           String
+
+  // Category Info
+  name              String              // e.g., "Faculty", "Student", "Professional"
+  description       String?
+
+  // Capacity
+  totalSlots        Int       @default(20)
+
+  // Pricing
+  price             Decimal   @db.Decimal(10, 2)
+  earlyBirdPrice    Decimal?  @db.Decimal(10, 2)
+  earlyBirdDeadline DateTime?
+
+  // Display order
+  displayOrder      Int       @default(0)
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  event             Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("event_pricing")
 }
 
 // ============================================================================

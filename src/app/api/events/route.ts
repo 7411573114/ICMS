@@ -122,10 +122,10 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     return Errors.validationError(parsed.error);
   }
 
-  const data = parsed.data;
+  const { pricingCategories, ...eventData } = parsed.data;
 
   // Generate slug if not provided
-  const slug = data.slug || generateUniqueSlug(data.title);
+  const slug = eventData.slug || generateUniqueSlug(eventData.title);
 
   // Check if slug is unique
   const existingEvent = await prisma.event.findUnique({
@@ -136,24 +136,54 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     return Errors.conflict("An event with this slug already exists");
   }
 
-  const event = await prisma.event.create({
-    data: {
-      ...data,
-      slug,
-      startDate: data.startDate ? new Date(data.startDate) : null,
-      endDate: data.endDate ? new Date(data.endDate) : null,
-      registrationDeadline: data.registrationDeadline
-        ? new Date(data.registrationDeadline)
-        : null,
-      earlyBirdDeadline: data.earlyBirdDeadline
-        ? new Date(data.earlyBirdDeadline)
-        : null,
-    },
-    include: {
-      _count: {
-        select: { registrations: true },
+  // Create event with pricing categories in a transaction
+  const event = await prisma.$transaction(async (tx) => {
+    // Create the event
+    const newEvent = await tx.event.create({
+      data: {
+        ...eventData,
+        slug,
+        startDate: eventData.startDate ? new Date(eventData.startDate) : null,
+        endDate: eventData.endDate ? new Date(eventData.endDate) : null,
+        registrationDeadline: eventData.registrationDeadline
+          ? new Date(eventData.registrationDeadline)
+          : null,
+        earlyBirdDeadline: eventData.earlyBirdDeadline
+          ? new Date(eventData.earlyBirdDeadline)
+          : null,
       },
-    },
+    });
+
+    // Create pricing categories if provided
+    if (pricingCategories && pricingCategories.length > 0) {
+      await tx.eventPricing.createMany({
+        data: pricingCategories.map((category, index) => ({
+          eventId: newEvent.id,
+          name: category.name,
+          description: category.description || null,
+          totalSlots: category.totalSlots || 20,
+          price: category.price,
+          earlyBirdPrice: category.earlyBirdPrice || null,
+          earlyBirdDeadline: category.earlyBirdDeadline
+            ? new Date(category.earlyBirdDeadline)
+            : null,
+          displayOrder: category.displayOrder ?? index,
+        })),
+      });
+    }
+
+    // Return event with pricing categories
+    return tx.event.findUnique({
+      where: { id: newEvent.id },
+      include: {
+        _count: {
+          select: { registrations: true },
+        },
+        pricingCategories: {
+          orderBy: { displayOrder: "asc" },
+        },
+      },
+    });
   });
 
   return successResponse(event, "Event created successfully", 201);

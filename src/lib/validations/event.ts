@@ -1,5 +1,19 @@
 import { z } from "zod";
 
+// Pricing category schema for category-based pricing
+export const pricingCategorySchema = z.object({
+  id: z.string().optional(), // Optional for new categories
+  name: z.string().min(1, "Category name is required"),
+  description: z.string().optional(),
+  totalSlots: z.number().int().positive().default(20),
+  price: z.number().nonnegative(),
+  earlyBirdPrice: z.number().nonnegative().optional(),
+  earlyBirdDeadline: z.string().or(z.date()).optional(),
+  displayOrder: z.number().int().default(0),
+});
+
+export type PricingCategoryInput = z.infer<typeof pricingCategorySchema>;
+
 export const eventStatusEnum = z.enum([
   "DRAFT",
   "UPCOMING",
@@ -42,6 +56,7 @@ export const createEventSchema = z.object({
 
   // Capacity & Registration
   capacity: z.number().int().positive().default(100),
+  registrationOpensDate: z.string().or(z.date()).optional(),
   registrationDeadline: z.string().or(z.date()).optional(),
   isRegistrationOpen: z.boolean().default(true),
 
@@ -84,6 +99,9 @@ export const createEventSchema = z.object({
   // Settings
   isPublished: z.boolean().default(false),
   isFeatured: z.boolean().default(false),
+
+  // Pricing Categories (for category-based pricing)
+  pricingCategories: z.array(pricingCategorySchema).optional(),
 });
 
 export const updateEventSchema = createEventSchema.partial();

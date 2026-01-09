@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Bell, Search, ChevronDown, Settings, User, LogOut, HelpCircle, Loader2, Ticket, Award } from "lucide-react";
+import { Bell, Search, ChevronDown, Settings, User, LogOut, HelpCircle, Loader2, Ticket, Award, Calendar } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
     DropdownMenu,
@@ -196,6 +196,12 @@ export function Header({ title, subtitle }: HeaderProps) {
                             {/* Attendee specific links */}
                             {user?.role === "ATTENDEE" && (
                                 <>
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/dashboard/browse-events" className="flex items-center gap-2 cursor-pointer">
+                                            <Calendar className="w-4 h-4" />
+                                            Browse Events
+                                        </Link>
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem asChild>
                                         <Link href="/dashboard/my-registrations" className="flex items-center gap-2 cursor-pointer">
                                             <Ticket className="w-4 h-4" />

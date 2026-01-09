@@ -136,6 +136,17 @@ interface EventSponsorEntry {
 
 const sponsorTiers = ["PLATINUM", "GOLD", "SILVER", "BRONZE"];
 
+interface SlotCategory {
+    id: string;
+    name: string;
+    description: string;
+    totalSlots: number;
+    price: number;
+    earlyBirdPrice: number;
+    earlyBirdDeadline: string;
+    isSaved: boolean;
+}
+
 export default function EditEventPage() {
     const params = useParams();
     const router = useRouter();
@@ -152,6 +163,7 @@ export default function EditEventPage() {
     const [eventSponsors, setEventSponsors] = useState<EventSponsorEntry[]>([]);
     const [existingSpeakers, setExistingSpeakers] = useState<Speaker[]>([]);
     const [existingSponsors, setExistingSponsors] = useState<Sponsor[]>([]);
+    const [slotCategories, setSlotCategories] = useState<SlotCategory[]>([]);
 
     const { confirm, ConfirmDialog } = useConfirmDialog();
 
@@ -329,6 +341,29 @@ export default function EditEventPage() {
                         }));
                         setEventSponsors(loadedSponsors);
                     }
+
+                    // Populate pricing categories
+                    if (e.pricingCategories && e.pricingCategories.length > 0) {
+                        const loadedCategories = e.pricingCategories.map((pc: {
+                            id: string;
+                            name: string;
+                            description: string | null;
+                            totalSlots: number;
+                            price: number | string;
+                            earlyBirdPrice: number | string | null;
+                            earlyBirdDeadline: string | null;
+                        }) => ({
+                            id: pc.id,
+                            name: pc.name || "",
+                            description: pc.description || "",
+                            totalSlots: pc.totalSlots || 100,
+                            price: Number(pc.price) || 0,
+                            earlyBirdPrice: pc.earlyBirdPrice ? Number(pc.earlyBirdPrice) : 0,
+                            earlyBirdDeadline: pc.earlyBirdDeadline ? pc.earlyBirdDeadline.split("T")[0] : "",
+                            isSaved: true,
+                        }));
+                        setSlotCategories(loadedCategories);
+                    }
                 } else {
                     setError("Event not found");
                 }
@@ -479,6 +514,35 @@ export default function EditEventPage() {
         );
     };
 
+    // Slot Category helpers
+    const addSlotCategory = () => {
+        setSlotCategories([
+            ...slotCategories,
+            {
+                id: Date.now().toString(),
+                name: "",
+                description: "",
+                totalSlots: 100,
+                price: 0,
+                earlyBirdPrice: 0,
+                earlyBirdDeadline: "",
+                isSaved: false,
+            },
+        ]);
+    };
+
+    const removeSlotCategory = (id: string) => {
+        setSlotCategories(slotCategories.filter((cat) => cat.id !== id));
+    };
+
+    const updateSlotCategory = (id: string, field: keyof SlotCategory, value: string | number | boolean) => {
+        setSlotCategories(
+            slotCategories.map((cat) =>
+                cat.id === id ? { ...cat, [field]: value } : cat
+            )
+        );
+    };
+
     const handleSubmit = async (publish?: boolean) => {
         // Clear any previous errors first
         setError(null);
@@ -525,16 +589,31 @@ export default function EditEventPage() {
                 ? calculateEventStatus(formData.startDate, formData.endDate)
                 : undefined;
 
+            // Calculate total capacity from slot categories if available
+            const totalCapacity = slotCategories.length > 0
+                ? slotCategories.reduce((sum, cat) => sum + (Number(cat.totalSlots) || 0), 0)
+                : Number(formData.capacity);
+
             // 1. Update basic event data
             const response = await eventsService.update(eventId, {
                 ...formData,
                 isPublished,
                 ...(status && { status }),
-                capacity: Number(formData.capacity),
+                capacity: totalCapacity,
                 price: Number(formData.price),
                 earlyBirdPrice: formData.earlyBirdPrice ? Number(formData.earlyBirdPrice) : undefined,
                 cmeCredits: formData.cmeCredits ? Number(formData.cmeCredits) : undefined,
                 includes,
+                // Include pricing categories for category-based pricing
+                pricingCategories: slotCategories.filter(cat => cat.name.trim()).map((cat, index) => ({
+                    name: cat.name,
+                    description: cat.description || undefined,
+                    totalSlots: Number(cat.totalSlots) || 100,
+                    price: Number(cat.price) || 0,
+                    earlyBirdPrice: cat.earlyBirdPrice ? Number(cat.earlyBirdPrice) : undefined,
+                    earlyBirdDeadline: cat.earlyBirdDeadline || undefined,
+                    displayOrder: index,
+                })),
             });
 
             if (!response.success) {
@@ -1265,15 +1344,17 @@ export default function EditEventPage() {
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>Total Capacity *</Label>
-                                        <Input
-                                            type="number"
-                                            value={formData.capacity}
-                                            onChange={e => handleChange("capacity", parseInt(e.target.value) || 0)}
-                                            min={1}
-                                        />
-                                    </div>
+                                    {slotCategories.length === 0 && (
+                                        <div className="space-y-2">
+                                            <Label>Total Capacity *</Label>
+                                            <Input
+                                                type="number"
+                                                value={formData.capacity}
+                                                onChange={e => handleChange("capacity", parseInt(e.target.value) || 0)}
+                                                min={1}
+                                            />
+                                        </div>
+                                    )}
                                     <div className="space-y-2">
                                         <Label>Currency</Label>
                                         <Select value={formData.currency} onValueChange={v => handleChange("currency", v)}>
@@ -1289,41 +1370,177 @@ export default function EditEventPage() {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>Regular Price (₹)</Label>
-                                        <div className="relative">
-                                            <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                {/* Default Pricing (used when no categories defined) */}
+                                {slotCategories.length === 0 && (
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Regular Price (₹)</Label>
+                                            <div className="relative">
+                                                <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                <Input
+                                                    type="number"
+                                                    value={formData.price}
+                                                    onChange={e => handleChange("price", parseFloat(e.target.value) || 0)}
+                                                    className="pl-10"
+                                                    min={0}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Early Bird Price (₹)</Label>
+                                            <div className="relative">
+                                                <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                <Input
+                                                    type="number"
+                                                    value={formData.earlyBirdPrice}
+                                                    onChange={e => handleChange("earlyBirdPrice", parseFloat(e.target.value) || 0)}
+                                                    className="pl-10"
+                                                    min={0}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Early Bird Deadline</Label>
                                             <Input
-                                                type="number"
-                                                value={formData.price}
-                                                onChange={e => handleChange("price", parseFloat(e.target.value) || 0)}
-                                                className="pl-10"
-                                                min={0}
+                                                type="date"
+                                                value={formData.earlyBirdDeadline}
+                                                onChange={e => handleChange("earlyBirdDeadline", e.target.value)}
                                             />
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>Early Bird Price (₹)</Label>
-                                        <div className="relative">
-                                            <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                            <Input
-                                                type="number"
-                                                value={formData.earlyBirdPrice}
-                                                onChange={e => handleChange("earlyBirdPrice", parseFloat(e.target.value) || 0)}
-                                                className="pl-10"
-                                                min={0}
-                                            />
+                                )}
+
+                                {/* Pricing Categories */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <Label className="text-base">Pricing Categories</Label>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                Add different pricing tiers for Faculty, Students, Professionals, etc.
+                                            </p>
                                         </div>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={addSlotCategory}
+                                            className="gap-2"
+                                        >
+                                            <Plus className="h-4 w-4" />
+                                            Add Category
+                                        </Button>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>Early Bird Deadline</Label>
-                                        <Input
-                                            type="date"
-                                            value={formData.earlyBirdDeadline}
-                                            onChange={e => handleChange("earlyBirdDeadline", e.target.value)}
-                                        />
-                                    </div>
+
+                                    {slotCategories.length > 0 && (
+                                        <div className="space-y-4">
+                                            {slotCategories.map((category, index) => (
+                                                <div
+                                                    key={category.id}
+                                                    className="p-4 border rounded-xl bg-muted/30 space-y-4"
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <Badge variant="secondary" className="font-medium">
+                                                            Category {index + 1}
+                                                        </Badge>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => removeSlotCategory(category.id)}
+                                                            className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="space-y-2">
+                                                            <Label>Category Name *</Label>
+                                                            <Input
+                                                                placeholder="e.g., Faculty, Student, Professional"
+                                                                value={category.name}
+                                                                onChange={e => updateSlotCategory(category.id, "name", e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label>Slots Available</Label>
+                                                            <Input
+                                                                type="number"
+                                                                value={category.totalSlots}
+                                                                onChange={e => updateSlotCategory(category.id, "totalSlots", parseInt(e.target.value) || 0)}
+                                                                min={1}
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <Label>Description (Optional)</Label>
+                                                        <Input
+                                                            placeholder="Brief description of this category"
+                                                            value={category.description}
+                                                            onChange={e => updateSlotCategory(category.id, "description", e.target.value)}
+                                                        />
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                        <div className="space-y-2">
+                                                            <Label>Price (₹)</Label>
+                                                            <div className="relative">
+                                                                <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                                <Input
+                                                                    type="number"
+                                                                    value={category.price}
+                                                                    onChange={e => updateSlotCategory(category.id, "price", parseFloat(e.target.value) || 0)}
+                                                                    className="pl-10"
+                                                                    min={0}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label>Early Bird Price (₹)</Label>
+                                                            <div className="relative">
+                                                                <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                                <Input
+                                                                    type="number"
+                                                                    value={category.earlyBirdPrice}
+                                                                    onChange={e => updateSlotCategory(category.id, "earlyBirdPrice", parseFloat(e.target.value) || 0)}
+                                                                    className="pl-10"
+                                                                    min={0}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label>Early Bird Deadline</Label>
+                                                            <Input
+                                                                type="date"
+                                                                value={category.earlyBirdDeadline}
+                                                                onChange={e => updateSlotCategory(category.id, "earlyBirdDeadline", e.target.value)}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {slotCategories.length === 0 && (
+                                        <div className="text-center py-8 border-2 border-dashed rounded-xl bg-muted/20">
+                                            <Users className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+                                            <p className="text-sm text-muted-foreground mb-3">
+                                                No pricing categories defined. Default pricing will be used.
+                                            </p>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={addSlotCategory}
+                                                className="gap-2"
+                                            >
+                                                <Plus className="h-4 w-4" />
+                                                Add Pricing Category
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Summary Card */}
@@ -1334,12 +1551,16 @@ export default function EditEventPage() {
                                                 Total Capacity
                                             </p>
                                             <p className="text-xs text-muted-foreground">
-                                                Maximum registrations allowed
+                                                {slotCategories.length > 0
+                                                    ? `Sum of ${slotCategories.length} categor${slotCategories.length === 1 ? 'y' : 'ies'}`
+                                                    : "Maximum registrations allowed"}
                                             </p>
                                         </div>
                                         <div className="text-right">
                                             <p className="text-3xl font-bold text-primary">
-                                                {formData.capacity}
+                                                {slotCategories.length > 0
+                                                    ? slotCategories.reduce((sum, cat) => sum + (Number(cat.totalSlots) || 0), 0)
+                                                    : formData.capacity}
                                             </p>
                                             <p className="text-xs text-muted-foreground">slots</p>
                                         </div>

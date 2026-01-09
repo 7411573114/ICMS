@@ -63,6 +63,16 @@ import { cn } from "@/lib/utils";
 import { eventsService, Event } from "@/services/events";
 import { registrationsService, CreateRegistrationData } from "@/services/registrations";
 
+interface PricingCategory {
+    id: string;
+    name: string;
+    description: string | null;
+    totalSlots: number;
+    price: number;
+    earlyBirdPrice: number | null;
+    earlyBirdDeadline: string | null;
+}
+
 interface EventDisplayData {
     id: string;
     title: string;
@@ -86,6 +96,7 @@ interface EventDisplayData {
     includes: string[];
     speakers: { name: string; designation: string | null; institution: string | null }[];
     sponsors: { name: string; logo: string | null; tier: string }[];
+    pricingCategories: PricingCategory[];
 }
 
 type Step = "category" | "details" | "preferences" | "payment" | "confirmation";
@@ -133,6 +144,17 @@ export default function RegisterPage() {
                     const earlyBirdDate = event.earlyBirdDeadline ? new Date(event.earlyBirdDeadline) : null;
                     const isEarlyBird = earlyBirdDate ? new Date() < earlyBirdDate : false;
 
+                    // Map pricing categories from API
+                    const pricingCategories: PricingCategory[] = event.pricingCategories?.map((pc: { id: string; name: string; description?: string | null; totalSlots: number; price: number | string; earlyBirdPrice?: number | string | null; earlyBirdDeadline?: string | null }) => ({
+                        id: pc.id,
+                        name: pc.name,
+                        description: pc.description || null,
+                        totalSlots: pc.totalSlots,
+                        price: Number(pc.price),
+                        earlyBirdPrice: pc.earlyBirdPrice ? Number(pc.earlyBirdPrice) : null,
+                        earlyBirdDeadline: pc.earlyBirdDeadline || null,
+                    })) || [];
+
                     setEventData({
                         id: event.id,
                         title: event.title,
@@ -164,7 +186,13 @@ export default function RegisterPage() {
                             logo: es.sponsor.logo,
                             tier: es.tier,
                         })) || [],
+                        pricingCategories,
                     });
+
+                    // Auto-select first pricing category if available
+                    if (pricingCategories.length > 0) {
+                        setSelectedCategory(pricingCategories[0].id);
+                    }
                 } else {
                     setError("Event not found");
                 }
@@ -222,11 +250,33 @@ export default function RegisterPage() {
         networkingInterests: "",
     });
 
-    const basePrice = eventData
-        ? eventData.isEarlyBird && eventData.earlyBirdPrice
+    // Calculate base price based on selected category
+    const getBasePrice = () => {
+        if (!eventData) return 0;
+
+        // If there are pricing categories, use the selected one
+        if (eventData.pricingCategories && eventData.pricingCategories.length > 0) {
+            const category = eventData.pricingCategories.find(c => c.id === selectedCategory);
+            if (category) {
+                // Check if early bird is applicable for this category
+                const isEarlyBird = category.earlyBirdPrice && category.earlyBirdDeadline &&
+                    new Date() <= new Date(category.earlyBirdDeadline);
+                return isEarlyBird ? Number(category.earlyBirdPrice) : Number(category.price);
+            }
+        }
+
+        // Fallback to event-level pricing
+        return eventData.isEarlyBird && eventData.earlyBirdPrice
             ? Number(eventData.earlyBirdPrice)
-            : Number(eventData.price)
-        : 0;
+            : Number(eventData.price);
+    };
+
+    const getSelectedCategoryName = () => {
+        if (!eventData?.pricingCategories || !selectedCategory) return selectedCategory;
+        return eventData.pricingCategories.find(c => c.id === selectedCategory)?.name || selectedCategory;
+    };
+
+    const basePrice = getBasePrice();
 
     // Calculate additional costs (simplified - can be expanded later)
     const additionalCosts = { accommodation: 0, meals: 0, transport: 0, total: 0 };
@@ -314,7 +364,7 @@ export default function RegisterPage() {
                 phone: formData.phone || undefined,
                 organization: formData.institution || undefined,
                 designation: formData.designation || undefined,
-                category: selectedCategory || undefined,
+                category: getSelectedCategoryName() || undefined,
                 amount: totalPrice,
                 specialRequests: preferences.foodAllergies || undefined,
             };
@@ -790,6 +840,64 @@ export default function RegisterPage() {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6">
+                                    {/* Registration Category Selection */}
+                                    {eventData.pricingCategories && eventData.pricingCategories.length > 0 && (
+                                        <>
+                                            <div className="space-y-3">
+                                                <Label className="text-base font-semibold">Registration Category *</Label>
+                                                <p className="text-sm text-muted-foreground">Select your registration category based on your professional status</p>
+                                                <div className="grid gap-3">
+                                                    {eventData.pricingCategories.map((category) => {
+                                                        const isEarlyBird = category.earlyBirdPrice && category.earlyBirdDeadline &&
+                                                            new Date() <= new Date(category.earlyBirdDeadline);
+                                                        const displayPrice = isEarlyBird ? Number(category.earlyBirdPrice) : Number(category.price);
+
+                                                        return (
+                                                            <div
+                                                                key={category.id}
+                                                                className={cn(
+                                                                    "relative flex items-center justify-between p-4 rounded-lg border-2 cursor-pointer transition-all",
+                                                                    selectedCategory === category.id
+                                                                        ? "border-primary bg-primary/5"
+                                                                        : "border-border hover:border-primary/50"
+                                                                )}
+                                                                onClick={() => setSelectedCategory(category.id)}
+                                                            >
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className={cn(
+                                                                        "w-5 h-5 rounded-full border-2 flex items-center justify-center",
+                                                                        selectedCategory === category.id
+                                                                            ? "border-primary"
+                                                                            : "border-muted-foreground"
+                                                                    )}>
+                                                                        {selectedCategory === category.id && (
+                                                                            <div className="w-3 h-3 rounded-full bg-primary" />
+                                                                        )}
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="font-medium">{category.name}</p>
+                                                                        {category.description && (
+                                                                            <p className="text-sm text-muted-foreground">{category.description}</p>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <p className="font-bold text-primary text-lg">
+                                                                        {displayPrice > 0 ? `₹${displayPrice.toLocaleString()}` : "Free"}
+                                                                    </p>
+                                                                    {isEarlyBird && (
+                                                                        <p className="text-xs text-green-600">Early bird</p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                            <div className="h-px bg-border" />
+                                        </>
+                                    )}
+
                                     {/* Name */}
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <div className="space-y-2">

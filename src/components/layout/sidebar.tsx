@@ -47,6 +47,12 @@ const menuItems = [
         roles: ["SUPER_ADMIN", "EVENT_MANAGER", "REGISTRATION_MANAGER"] as UserRole[],
     },
     {
+        title: "Browse Events",
+        href: "/dashboard/browse-events",
+        icon: Calendar,
+        roles: ["ATTENDEE"] as UserRole[],
+    },
+    {
         title: "My Registrations",
         href: "/dashboard/my-registrations",
         icon: Users,

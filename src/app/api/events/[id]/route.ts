@@ -50,6 +50,9 @@ export const GET = withErrorHandler(
           },
           orderBy: { displayOrder: "asc" },
         },
+        pricingCategories: {
+          orderBy: { displayOrder: "asc" },
+        },
         _count: {
           select: { registrations: true, certificates: true },
         },
@@ -105,7 +108,7 @@ export const PUT = withErrorHandler(
       return Errors.validationError(parsed.error);
     }
 
-    const data = parsed.data;
+    const { pricingCategories, ...data } = parsed.data;
 
     // If slug is being changed, check for uniqueness
     if (data.slug && data.slug !== existingEvent.slug) {
@@ -144,14 +147,52 @@ export const PUT = withErrorHandler(
         : null;
     }
 
-    const event = await prisma.event.update({
-      where: { id },
-      data: updateData,
-      include: {
-        _count: {
-          select: { registrations: true },
+    // Update event and pricing categories in a transaction
+    const event = await prisma.$transaction(async (tx) => {
+      // Update the event
+      await tx.event.update({
+        where: { id },
+        data: updateData,
+      });
+
+      // Update pricing categories if provided
+      if (pricingCategories !== undefined) {
+        // Delete existing pricing categories
+        await tx.eventPricing.deleteMany({
+          where: { eventId: id },
+        });
+
+        // Create new pricing categories
+        if (pricingCategories && pricingCategories.length > 0) {
+          await tx.eventPricing.createMany({
+            data: pricingCategories.map((category, index) => ({
+              eventId: id,
+              name: category.name,
+              description: category.description || null,
+              totalSlots: category.totalSlots || 20,
+              price: category.price,
+              earlyBirdPrice: category.earlyBirdPrice || null,
+              earlyBirdDeadline: category.earlyBirdDeadline
+                ? new Date(category.earlyBirdDeadline)
+                : null,
+              displayOrder: category.displayOrder ?? index,
+            })),
+          });
+        }
+      }
+
+      // Return updated event with pricing categories
+      return tx.event.findUnique({
+        where: { id },
+        include: {
+          _count: {
+            select: { registrations: true },
+          },
+          pricingCategories: {
+            orderBy: { displayOrder: "asc" },
+          },
         },
-      },
+      });
     });
 
     return successResponse(event, "Event updated successfully");

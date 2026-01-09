@@ -184,6 +184,43 @@ export default function EventsPage() {
         setSearchQuery("");
     };
 
+    // Duplicate event handler
+    const handleDuplicateEvent = async (eventId: string, eventTitle: string) => {
+        const confirmed = await confirm({
+            title: "Duplicate Event",
+            description: `Create a copy of "${eventTitle}"? The new event will be scheduled 3 months from now and set as a draft.`,
+            confirmText: "Duplicate",
+            cancelText: "Cancel",
+            variant: "info",
+        });
+
+        if (!confirmed) return;
+
+        try {
+            const response = await eventsService.duplicate(eventId);
+            if (response.success && response.data) {
+                // Redirect to edit the new event
+                window.location.href = `/dashboard/events/${response.data.id}/edit`;
+            } else {
+                const errorMessage = typeof response.error === 'string'
+                    ? response.error
+                    : response.error?.message || "Failed to duplicate event";
+                alert({
+                    title: "Duplicate Failed",
+                    description: errorMessage,
+                    variant: "error",
+                });
+            }
+        } catch (error) {
+            console.error("Failed to duplicate event:", error);
+            alert({
+                title: "Duplicate Failed",
+                description: "An unexpected error occurred while duplicating the event.",
+                variant: "error",
+            });
+        }
+    };
+
     // Delete event handler
     const handleDeleteEvent = async (eventId: string, eventTitle: string) => {
         const confirmed = await confirm({
@@ -593,7 +630,9 @@ export default function EventsPage() {
                                                     </DropdownMenuItem>
                                                 )}
                                                 {canCreateEvent && (
-                                                    <DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        onClick={() => handleDuplicateEvent(event.id, event.title)}
+                                                    >
                                                         <Copy className="mr-2 h-4 w-4" />
                                                         Duplicate
                                                     </DropdownMenuItem>
@@ -822,7 +861,9 @@ export default function EventsPage() {
                                                                 </DropdownMenuItem>
                                                             )}
                                                             {canCreateEvent && (
-                                                                <DropdownMenuItem>
+                                                                <DropdownMenuItem
+                                                                    onClick={() => handleDuplicateEvent(event.id, event.title)}
+                                                                >
                                                                     <Copy className="mr-2 h-4 w-4" />
                                                                     Duplicate
                                                                 </DropdownMenuItem>

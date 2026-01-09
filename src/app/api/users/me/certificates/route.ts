@@ -29,7 +29,6 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       registration: {
         select: {
           id: true,
-          registrationNumber: true,
         },
       },
     },
@@ -41,10 +40,10 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   // Map to response format
   const mappedCertificates = certificates.map((cert) => ({
     id: cert.id,
-    certificateNumber: cert.certificateNumber,
+    certificateCode: cert.certificateCode,
     issuedAt: cert.issuedAt,
-    verificationCode: cert.verificationCode,
     cmeCredits: cert.cmeCredits,
+    status: cert.status,
     event: cert.event,
     registration: cert.registration,
   }));
